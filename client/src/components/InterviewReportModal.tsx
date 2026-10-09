@@ -27,6 +27,7 @@ interface InterviewReportModalProps {
   onRestart: () => void;
   onReevaluate?: (customApiKey?: string) => Promise<void>;
   isReevaluating?: boolean;
+  targetRole?: string;
 }
 
 export const InterviewReportModal: React.FC<InterviewReportModalProps> = ({
@@ -36,7 +37,8 @@ export const InterviewReportModal: React.FC<InterviewReportModalProps> = ({
   turns,
   onRestart,
   onReevaluate,
-  isReevaluating = false
+  isReevaluating = false,
+  targetRole
 }) => {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState(() => getGeminiApiKey());
@@ -112,7 +114,7 @@ export const InterviewReportModal: React.FC<InterviewReportModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg sm:text-xl font-bold text-white tracking-wide">
-                  דוח משוב מקיף – ראיון HR & Behavioral
+                  דוח משוב מקיף – ראיון {targetRole ? `לתפקיד ${targetRole}` : 'HR & Behavioral'}
                 </h2>
                 <span
                   className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${

@@ -15,9 +15,11 @@ import {
   Sparkles,
   Loader2,
   Key,
-  ExternalLink
+  ExternalLink,
+  Briefcase
 } from 'lucide-react';
 import { useHebrewInterviewSession } from '../hooks/useHebrewInterviewSession';
+import { DEFAULT_ROLE_PRESETS } from '../types/hebrewInterview';
 import { hasGeminiApiKey } from '../services/geminiVoiceService';
 import { InterviewReportModal } from './InterviewReportModal';
 
@@ -30,6 +32,8 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
 }) => {
   // Conversational session hook powered by native Gemini audio & STT
   const {
+    targetRole,
+    setTargetRole,
     isSessionActive,
     currentStage,
     callDuration,
@@ -169,31 +173,81 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
     >
       {/* Pre-start Gate: Welcome & Audio Initiation */}
       {!isSessionActive && (
-        <div className="absolute inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-violet-600 flex items-center justify-center shadow-[0_0_35px_rgba(6,182,212,0.5)] mb-5 ring-2 ring-cyan-400/40 animate-pulse">
-            <Volume2 className="w-10 h-10 text-white" />
+        <div className="absolute inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-300 overflow-y-auto">
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-violet-600 flex items-center justify-center shadow-[0_0_35px_rgba(6,182,212,0.5)] mb-3 ring-2 ring-cyan-400/40 animate-pulse">
+            <Volume2 className="w-8 h-8 text-white" />
           </div>
 
           <h2 className="text-2xl sm:text-3xl font-extrabold text-white mb-2 tracking-wide">
-            ראיון עבודה מקצועי בעברית (Google Gemini 2.0 Flash Audio)
+            ראיון עבודה מקצועי בעברית (Google Gemini Voice)
           </h2>
 
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-950/70 border border-violet-500/40 text-violet-300 text-xs font-mono font-bold mb-4">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Native Gemini Multimodal Audio • Prebuilt Voice: Aoede</span>
+            <span>שאלות דינמיות מותאמות לתפקיד • דיבור קולי שוטף (Aoede)</span>
           </div>
 
-          <p className="text-sm text-slate-300 max-w-lg mb-6 leading-relaxed">
-            סימולטור ראיונות HR והתנהגותיים (STAR) בטכנולוגיית <strong>Google Gemini 2.0 Flash</strong> — הפקת קול ישירה (Native Audio Modality), זיהוי דיבור שוטף בעברית עם עצירה מידית בהתפרצות (Barge-In), ודוח משוב סופי מבוסס AI.
-          </p>
+          {/* Role Configuration Box */}
+          <div className="w-full max-w-xl bg-slate-900/95 border border-cyan-500/30 rounded-2xl p-4 sm:p-5 mb-5 text-right shadow-2xl backdrop-blur-md">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                <Briefcase className="w-4 h-4 text-cyan-400" />
+                <span>בחר/י או הקלד/י תפקיד לראיון:</span>
+              </label>
+              <span className="text-[11px] text-slate-400 hidden sm:inline">
+                שאלות הראיון יותאמו במדויק לתפקיד זה
+              </span>
+            </div>
+
+            {/* Custom Role Input */}
+            <div className="relative mb-3">
+              <input
+                type="text"
+                value={targetRole}
+                onChange={(e) => setTargetRole(e.target.value)}
+                placeholder="הקלד תפקיד (למשל: DevOps, Full Stack, מנהל מוצר, Frontend, סייבר...)"
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-950 border border-cyan-500/40 text-sm text-white placeholder-slate-500 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400/50 transition-all font-semibold"
+              />
+            </div>
+
+            {/* Popular Role Presets */}
+            <div className="space-y-1.5">
+              <div className="text-[11px] text-slate-400 font-semibold mb-1 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-cyan-400" />
+                <span>בחירה מהירה מבין תפקידים פופולריים:</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {DEFAULT_ROLE_PRESETS.map((preset) => {
+                  const isSelected =
+                    targetRole.trim().toLowerCase() === preset.titleEn.toLowerCase() ||
+                    targetRole.trim() === preset.titleHe;
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => setTargetRole(preset.titleEn)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all flex items-center gap-1.5 ${
+                        isSelected
+                          ? 'bg-cyan-500/25 border-cyan-400 text-cyan-200 shadow-[0_0_12px_rgba(6,182,212,0.35)] ring-1 ring-cyan-400/60'
+                          : 'bg-slate-950/80 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                      }`}
+                    >
+                      <span>{preset.icon}</span>
+                      <span>{preset.titleHe}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-3">
             <button
-              onClick={startSession}
+              onClick={() => startSession(targetRole)}
               className="px-8 py-3.5 rounded-full bg-gradient-to-r from-cyan-500 via-indigo-600 to-violet-600 hover:from-cyan-400 hover:to-violet-500 text-white font-bold text-sm shadow-[0_0_30px_rgba(6,182,212,0.5)] transition-all flex items-center gap-2.5 transform hover:scale-105 active:scale-95"
             >
               <Play className="w-5 h-5 fill-white" />
-              <span>התחל ראיון עבודה בעברית</span>
+              <span>התחל ראיון לתפקיד: {targetRole.trim() || 'Software Engineer'}</span>
             </button>
           </div>
         </div>
@@ -227,11 +281,16 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
           <div className="h-4 w-[1px] bg-slate-800" />
 
           <span className="text-xs font-semibold text-slate-200 hidden sm:inline">
-            רותם — מנהלת גיוס ומשאבי אנוש
+            רותם — מנהלת גיוס
           </span>
 
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-950/70 border border-violet-500/30 text-violet-300 font-bold">
-            Gemini 2.0 Flash Audio
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-cyan-950/80 border border-cyan-500/40 text-cyan-300 text-xs font-semibold shadow-[0_0_10px_rgba(6,182,212,0.2)]">
+            <Briefcase className="w-3 h-3 text-cyan-400" />
+            <span>תפקיד: {targetRole}</span>
+          </div>
+
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-950/70 border border-violet-500/30 text-violet-300 font-bold hidden md:inline">
+            Gemini Voice • Aoede
           </span>
         </div>
 
@@ -341,10 +400,10 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
             {/* Persona Details & Status Chip */}
             <div className="mt-5 text-center">
               <h3 className="text-base sm:text-lg font-bold text-white tracking-wide">
-                רותם — מנהלת גיוס ומשאבי אנוש
+                רותם — מראיינת לתפקיד {targetRole}
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                ראיון התנהגותי (Gemini 2.0 Flash Audio • Aoede)
+                סימולציית ראיון התנהגותי מותאמת אישית (Gemini Voice • Aoede)
               </p>
 
               {/* Dynamic Status Indicator */}
@@ -575,6 +634,7 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
           onRestart={restartSession}
           onReevaluate={handleReevaluate}
           isReevaluating={isAnalyzing}
+          targetRole={targetRole}
         />
       )}
 

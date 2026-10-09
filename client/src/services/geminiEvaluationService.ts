@@ -44,15 +44,19 @@ export interface GeminiCritiqueReport {
 /**
  * Heuristic fallback evaluation engine when offline or no API key is set
  */
-export function generateHeuristicCritique(turns: Turn[]): GeminiCritiqueReport {
+export function generateHeuristicCritique(
+  turns: Turn[],
+  targetRole?: string
+): GeminiCritiqueReport {
   const candidateTurns = turns.filter((t) => t.speaker === 'candidate');
   const count = candidateTurns.length;
+  const roleName = targetRole?.trim() || 'מקצועי בהייטק';
 
   if (count === 0) {
     return {
       overallScore: 65,
       hiringVerdict: 'Lean Hire',
-      executiveSummary: 'הראיון הסתיים מוקדם ללא מענה מספק על שאלות הראיון. מומלץ לבצע סימולציה מלאה בעברית.',
+      executiveSummary: `הראיון לתפקיד ${roleName} הסתיים מוקדם ללא מענה מספק על שאלות הראיון. מומלץ לבצע סימולציה מלאה בעברית.`,
       criteriaScores: {
         communication: 70,
         starMethodology: 60,
@@ -155,7 +159,7 @@ export function generateHeuristicCritique(turns: Turn[]): GeminiCritiqueReport {
   return {
     overallScore,
     hiringVerdict,
-    executiveSummary: `המועמד הפגין רמת מוכנות טובה בראיון ההתנהגותי (ציון: ${overallScore}/100, החלטה: ${hiringVerdict}). התשובות שיקפו יחסי אנוש חיוביים, ביטחון עצמי וחשיבה עצמאית. יישום מלא של רכיב ה-Result יקפיץ את הסיכויים להצעת עבודה (Offer).`,
+    executiveSummary: `המועמד הפגין רמת מוכנות טובה בראיון ההתנהגותי לתפקיד ${roleName} (ציון: ${overallScore}/100, החלטה: ${hiringVerdict}). התשובות שיקפו יחסי אנוש חיוביים, ביטחון עצמי וחשיבה עצמאית. יישום מלא של רכיב ה-Result יקפיץ את הסיכויים להצעת עבודה (Offer).`,
     criteriaScores: {
       communication: commScore,
       starMethodology: starScore,
@@ -181,19 +185,21 @@ export function generateHeuristicCritique(turns: Turn[]): GeminiCritiqueReport {
  */
 export async function evaluateInterviewWithGemini(
   turns: Turn[],
-  customApiKey?: string
+  customApiKey?: string,
+  targetRole?: string
 ): Promise<GeminiCritiqueReport> {
   const apiKey = getGeminiApiKey(customApiKey);
+  const roleName = targetRole?.trim() || 'מקצועי בהייטק';
 
   // If no API key is available, use heuristic critique
   if (!apiKey) {
     console.info('No Gemini API key supplied. Using heuristic evaluation engine.');
-    return generateHeuristicCritique(turns);
+    return generateHeuristicCritique(turns, roleName);
   }
 
   const candidateTurns = turns.filter((t) => t.speaker === 'candidate');
   if (candidateTurns.length === 0) {
-    return generateHeuristicCritique(turns);
+    return generateHeuristicCritique(turns, roleName);
   }
 
   // Format transcript cleanly
@@ -202,12 +208,14 @@ export async function evaluateInterviewWithGemini(
     .join('\n\n');
 
   const systemDirective = `You are an experienced HR Director and Tech Recruitment Specialist. Analyze the candidate's actual Hebrew responses from the transcript with uncompromising rigor and constructive feedback.
+Target Role for this interview: "${roleName}".
+Evaluate their technical depth, behavioral examples, STAR methodology, and suitability specifically for the position of "${roleName}".
 
 Strict JSON Output Schema (respond ONLY with valid JSON):
 {
   "overallScore": 82,
   "hiringVerdict": "Hire",
-  "executiveSummary": "פסקת סיכום מקצועית ומנומקת בעברית על איכות התשובות, הביטחון וההתאמה...",
+  "executiveSummary": "פסקת סיכום מקצועית ומנומקת בעברית על איכות התשובות, הביטחון וההתאמה לתפקיד ${roleName}...",
   "criteriaScores": {
     "communication": 85,
     "starMethodology": 75,
@@ -238,9 +246,14 @@ Instructions:
 2. Quotes in strongAnswers and weakAnswers MUST be exact excerpts from the candidate's actual answers in the transcript.
 3. Write all text fields in fluent, professional, constructive Hebrew.`;
 
-  const prompt = `${systemDirective}\n\nתמלול הראיון המלא:\n-------------------------------------\n${formattedTranscript}\n-------------------------------------`;
+  const prompt = `${systemDirective}\n\nתמלול הראיון המלא לתפקיד ${roleName}:\n-------------------------------------\n${formattedTranscript}\n-------------------------------------`;
 
-  const models = ['gemini-3.8-flash', 'gemini-flash-latest', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+  const models = [
+    'gemini-flash-latest',
+    'gemini-3-flash-preview',
+    'gemini-3.1-flash-lite-preview',
+    'gemini-flash-lite-latest'
+  ];
 
   for (const model of models) {
     try {
@@ -294,5 +307,5 @@ Instructions:
 
   // Graceful fallback to heuristic critique
   console.info('Falling back to heuristic critique evaluation engine.');
-  return generateHeuristicCritique(turns);
+  return generateHeuristicCritique(turns, roleName);
 }

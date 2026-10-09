@@ -10,45 +10,45 @@ import {
   type Turn,
   type GeminiCritiqueReport
 } from '../services/geminiEvaluationService';
+import {
+  getRoleIntroPrompt,
+  generateDynamicRoleTurnWithGemini,
+  type SessionStage
+} from '../services/hebrewRoleInterviewService';
 
-export type SessionStage = 'intro' | 'behavioral' | 'challenge' | 'wrapup' | 'completed';
-
-export const STAGE_PROMPTS: Record<SessionStage, string> = {
-  intro:
-    'שלום וברוך הבא לראיון העבודה שלך במוק מאסטר! שמי רותם, מנהלת גיוס ומשאבי אנוש. אשמח שתספר לי קצת על עצמך, על המסלול המקצועי שלך ומה מביא אותך לחפש את האתגר הבא?',
-  behavioral:
-    'תודה על השיתוף! בוא נעבור להתמודדות בתוך צוות: תאר לי סיטואציה שבה היית בחוסר הסכמה מקצועי עם חבר צוות או מנהל ישיר. מה היה שורש המחלוקת, איך ניגשת לפתור את זה, ומה הייתה התוצאה הסופית?',
-  challenge:
-    'עכשיו אשמח לשמוע על התמודדות עם מורכבות, לחץ ואי-ודאות: ספר על פרויקט או משימה שלא התפתחו כמתוכנן, או אפילו נכשלו. מה קרה, מה היה החלק האישי שלך בזה, ומה למדת מזה להמשך דרכך?',
-  wrapup:
-    'תודה רבה על השיתוף המעמיק! הגענו לשלב השאלות שלך: האם יש לך שאלות אליי לגבי התפקיד, התרבות הארגונית בצוות או החברה?',
-  completed:
-    'תודה רבה על ראיון מעשיר, מעמיק ופתוח! נהניתי מאוד להכיר אותך. נסכם כעת את תוצאות המפגש ונעבור לדוח המשוב המפורט של Gemini AI.'
-};
+export type { SessionStage };
 
 interface UseHebrewInterviewSessionProps {
   onEvaluationComplete?: (report: GeminiCritiqueReport) => void;
+  initialRole?: string;
 }
 
 export function useHebrewInterviewSession({
-  onEvaluationComplete
+  onEvaluationComplete,
+  initialRole = 'Full Stack Developer'
 }: UseHebrewInterviewSessionProps = {}) {
+  // Target job role state
+  const [targetRole, setTargetRole] = useState<string>(initialRole);
+
   // Session lifecycle states
   const [isSessionActive, setIsSessionActive] = useState<boolean>(false);
   const [currentStage, setCurrentStage] = useState<SessionStage>('intro');
   const [callDuration, setCallDuration] = useState<number>(0);
 
   // Transcript turns history
-  const [turns, setTurns] = useState<Turn[]>(() => [
-    {
-      speaker: 'interviewer',
-      text: STAGE_PROMPTS.intro,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }
-  ]);
+  const [turns, setTurns] = useState<Turn[]>(() => {
+    const initialIntro = getRoleIntroPrompt(initialRole);
+    return [
+      {
+        speaker: 'interviewer',
+        text: initialIntro,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }
+    ];
+  });
 
-  const [currentSubtitle, setCurrentSubtitle] = useState<string>(STAGE_PROMPTS.intro);
-  const [lastQuestion, setLastQuestion] = useState<string>(STAGE_PROMPTS.intro);
+  const [currentSubtitle, setCurrentSubtitle] = useState<string>(() => getRoleIntroPrompt(initialRole));
+  const [lastQuestion, setLastQuestion] = useState<string>(() => getRoleIntroPrompt(initialRole));
 
   // Audio / STT states
   const [isListening, setIsListening] = useState<boolean>(false);
@@ -70,11 +70,16 @@ export function useHebrewInterviewSession({
 
   // References for stable event handlers
   const recognitionRef = useRef<any>(null);
+  const targetRoleRef = useRef<string>(targetRole);
   const stageRef = useRef<SessionStage>(currentStage);
   const turnsRef = useRef<Turn[]>(turns);
   const isSpeakingRef = useRef<boolean>(isSpeaking);
   const isListeningRef = useRef<boolean>(isListening);
   const handleResponseRef = useRef<(text: string) => void>(() => {});
+
+  useEffect(() => {
+    targetRoleRef.current = targetRole;
+  }, [targetRole]);
 
   useEffect(() => {
     stageRef.current = currentStage;
@@ -128,7 +133,7 @@ export function useHebrewInterviewSession({
 
   // Candidate Response Handler & State Machine Transition
   const handleCandidateResponse = useCallback(
-    (answerText: string) => {
+    async (answerText: string) => {
       const clean = answerText.trim();
       if (!clean) return;
 
@@ -137,39 +142,42 @@ export function useHebrewInterviewSession({
 
       // 2. Advance stage machine ('intro' -> 'behavioral' -> 'challenge' -> 'wrapup' -> 'completed')
       let nextStage: SessionStage = 'behavioral';
-      let nextPrompt = STAGE_PROMPTS.behavioral;
-
       switch (stageRef.current) {
         case 'intro':
           nextStage = 'behavioral';
-          nextPrompt = `תודה רבה על השיתוף! ${STAGE_PROMPTS.behavioral}`;
           break;
         case 'behavioral':
           nextStage = 'challenge';
-          nextPrompt = `דוגמה מעניינת וחשובה. ${STAGE_PROMPTS.challenge}`;
           break;
         case 'challenge':
           nextStage = 'wrapup';
-          nextPrompt = `תודה על הכנות והתובנות המקצועיות. ${STAGE_PROMPTS.wrapup}`;
           break;
         case 'wrapup':
         default:
           nextStage = 'completed';
-          nextPrompt = STAGE_PROMPTS.completed;
           break;
       }
 
       setCurrentStage(nextStage);
-      setLastQuestion(nextPrompt);
-      setCurrentSubtitle(nextPrompt);
 
-      // 3. Record interviewer turn
-      addTurn('interviewer', nextPrompt);
+      // 3. Dynamically generate role-tailored question
+      const dynamicQuestion = await generateDynamicRoleTurnWithGemini({
+        targetRole: targetRoleRef.current,
+        nextStage,
+        candidateAnswer: clean,
+        history: turnsRef.current
+      });
 
-      // 4. Play speech using native Gemini Audio
+      setLastQuestion(dynamicQuestion);
+      setCurrentSubtitle(dynamicQuestion);
+
+      // 4. Record interviewer turn
+      addTurn('interviewer', dynamicQuestion);
+
+      // 5. Play speech using native Gemini Audio
       setTimeout(() => {
-        speakText(nextPrompt);
-      }, 350);
+        speakText(dynamicQuestion);
+      }, 300);
     },
     [addTurn, speakText]
   );
@@ -244,25 +252,49 @@ export function useHebrewInterviewSession({
   }, []);
 
   // Start interview session
-  const startSession = useCallback(() => {
-    setIsSessionActive(true);
-    setIsListening(true);
-    isListeningRef.current = true;
-
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.start();
-      } catch {
-        // Ignored
+  const startSession = useCallback(
+    (chosenRole?: string) => {
+      const activeRole = (chosenRole || targetRoleRef.current).trim() || 'Software Engineer';
+      if (chosenRole) {
+        setTargetRole(activeRole);
+        targetRoleRef.current = activeRole;
       }
-    }
 
-    speakText(STAGE_PROMPTS.intro);
-  }, [speakText]);
+      const introText = getRoleIntroPrompt(activeRole);
+
+      setTurns([
+        {
+          speaker: 'interviewer',
+          text: introText,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+      setCurrentStage('intro');
+      setLastQuestion(introText);
+      setCurrentSubtitle(introText);
+      setReport(null);
+      setCallDuration(0);
+
+      setIsSessionActive(true);
+      setIsListening(true);
+      isListeningRef.current = true;
+
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.start();
+        } catch {
+          // Ignored
+        }
+      }
+
+      speakText(introText);
+    },
+    [speakText]
+  );
 
   // Repeat current question
   const repeatQuestion = useCallback(() => {
-    const textToSpeak = lastQuestion || STAGE_PROMPTS.intro;
+    const textToSpeak = lastQuestion || getRoleIntroPrompt(targetRoleRef.current);
     setCurrentSubtitle(textToSpeak);
     speakText(textToSpeak);
   }, [lastQuestion, speakText]);
@@ -300,7 +332,11 @@ export function useHebrewInterviewSession({
       setIsAnalyzing(true);
 
       try {
-        const critique = await evaluateInterviewWithGemini(turnsRef.current, customApiKey);
+        const critique = await evaluateInterviewWithGemini(
+          turnsRef.current,
+          customApiKey,
+          targetRoleRef.current
+        );
         setReport(critique);
         onEvaluationComplete?.(critique);
         return critique;
@@ -315,35 +351,45 @@ export function useHebrewInterviewSession({
   );
 
   // Restart interview
-  const restartSession = useCallback(() => {
-    stopSpeaking();
-    setIsSpeaking(false);
-    setTurns([
-      {
-        speaker: 'interviewer',
-        text: STAGE_PROMPTS.intro,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const restartSession = useCallback(
+    (chosenRole?: string) => {
+      stopSpeaking();
+      setIsSpeaking(false);
+      const activeRole = (chosenRole || targetRoleRef.current).trim() || 'Software Engineer';
+      if (chosenRole) {
+        setTargetRole(activeRole);
+        targetRoleRef.current = activeRole;
       }
-    ]);
-    setCurrentStage('intro');
-    setCallDuration(0);
-    setLastQuestion(STAGE_PROMPTS.intro);
-    setCurrentSubtitle(STAGE_PROMPTS.intro);
-    setReport(null);
-    setIsSessionActive(true);
-    setIsListening(true);
-    isListeningRef.current = true;
 
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.start();
-      } catch {
-        // Ignored
+      const introText = getRoleIntroPrompt(activeRole);
+      setTurns([
+        {
+          speaker: 'interviewer',
+          text: introText,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+      setCurrentStage('intro');
+      setCallDuration(0);
+      setLastQuestion(introText);
+      setCurrentSubtitle(introText);
+      setReport(null);
+      setIsSessionActive(true);
+      setIsListening(true);
+      isListeningRef.current = true;
+
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.start();
+        } catch {
+          // Ignored
+        }
       }
-    }
 
-    speakText(STAGE_PROMPTS.intro);
-  }, [speakText]);
+      speakText(introText);
+    },
+    [speakText]
+  );
 
   // Handle saving API key from UI
   const handleSaveApiKey = useCallback((key: string) => {
@@ -353,6 +399,10 @@ export function useHebrewInterviewSession({
   }, []);
 
   return {
+    // Role selection state
+    targetRole,
+    setTargetRole,
+
     // Session state
     isSessionActive,
     currentStage,
