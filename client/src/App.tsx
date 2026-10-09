@@ -21,7 +21,7 @@ import { buildTestHarness, executeCode, parseHarnessOutput } from './services/co
 
 export default function App() {
   // Top-level mode switcher: LeetCode Sandbox vs Hebrew HR & Behavioral Interviewer
-  const [activeMode, setActiveMode] = useState<AppMode>('hebrew_interview');
+  const [activeMode, setActiveMode] = useState<AppMode>('coding_sandbox');
 
   // Active problem & language selection
   const [currentProblem, setCurrentProblem] = useState<CodingProblem>(PROBLEMS[0]);
@@ -55,7 +55,7 @@ export default function App() {
     }
   });
 
-  // Interviewer Agent Hook (for Coding Sandbox)
+  // Intelligent Gemini-Powered Interviewer Agent Hook (for Coding Sandbox)
   const {
     personaType,
     setPersonaType,
@@ -63,6 +63,8 @@ export default function App() {
     interviewState,
     messages,
     hintIndex,
+    isAiThinking,
+    currentCaption: aiCaption,
     handleUserMessage,
     handleExecutionResult,
     requestHint,
@@ -70,6 +72,7 @@ export default function App() {
   } = useInterviewerAgent({
     problem: currentProblem,
     language,
+    candidateCode: code,
     speak,
     playAudioCue,
     lastCodeEditTime,
@@ -240,6 +243,8 @@ export default function App() {
   // Derive visual avatar state for coding sandbox
   const visualState: AvatarVisualState = isSpeaking
     ? 'SPEAKING'
+    : isAiThinking
+    ? 'THINKING'
     : isListening
     ? 'LISTENING'
     : isRunning || isSubmitting
@@ -281,7 +286,7 @@ export default function App() {
               onSelectPersona={handleSelectPersona}
               mood={mood}
               visualState={visualState}
-              currentCaption={currentCaption}
+              currentCaption={currentCaption || aiCaption}
               messages={messages}
               hintIndex={hintIndex}
               onSendMessage={handleUserMessage}
@@ -289,6 +294,7 @@ export default function App() {
               isListening={isListening}
               onToggleListening={toggleListening}
               interimTranscript={interimTranscript}
+              isAiThinking={isAiThinking}
             />
           </div>
 

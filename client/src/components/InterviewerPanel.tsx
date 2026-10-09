@@ -37,6 +37,7 @@ interface InterviewerPanelProps {
   isListening: boolean;
   onToggleListening: () => void;
   interimTranscript?: string;
+  isAiThinking?: boolean;
 }
 
 export const InterviewerPanel: React.FC<InterviewerPanelProps> = ({
@@ -53,7 +54,8 @@ export const InterviewerPanel: React.FC<InterviewerPanelProps> = ({
   onRequestHint,
   isListening,
   onToggleListening,
-  interimTranscript = ''
+  interimTranscript = '',
+  isAiThinking = false
 }) => {
   const [inputText, setInputText] = useState('');
   const [isHistoryCollapsed, setIsHistoryCollapsed] = useState(false);
@@ -61,7 +63,7 @@ export const InterviewerPanel: React.FC<InterviewerPanelProps> = ({
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, interimTranscript]);
+  }, [messages, interimTranscript, isAiThinking]);
 
   const handleSend = () => {
     if (!inputText.trim()) return;
@@ -176,6 +178,19 @@ export const InterviewerPanel: React.FC<InterviewerPanelProps> = ({
               </div>
               <div className="max-w-[85%] rounded-2xl p-2.5 text-xs leading-relaxed bg-rose-950/60 border border-rose-500/40 text-rose-200 italic rounded-tr-sm">
                 <span>{interimTranscript} ...</span>
+              </div>
+            </div>
+          )}
+
+          {/* AI Thinking Animation */}
+          {isAiThinking && (
+            <div className="flex items-start space-x-2.5 animate-in fade-in duration-200">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-cyan-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-cyan-500/20">
+                <Sparkles className="w-3.5 h-3.5 animate-pulse text-cyan-200" />
+              </div>
+              <div className="rounded-2xl px-3.5 py-2.5 text-xs bg-[#0e1424] border border-cyan-500/30 text-cyan-200 flex items-center space-x-2 rounded-tl-sm shadow-md">
+                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping shrink-0" />
+                <span className="italic">Thinking & analyzing problem...</span>
               </div>
             </div>
           )}

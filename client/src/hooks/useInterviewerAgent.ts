@@ -9,19 +9,13 @@ import type {
   SupportedLanguage,
   TestCaseResult
 } from '../types';
-import {
-  generateComplexityFeedback,
-  generateGreeting,
-  generateIdleNudge,
-  generateStrategyFeedback,
-  generateSubmissionFeedback,
-  generateTracebackFeedback
-} from '../services/interviewerPersona';
+import { generateGeminiLeetCodeResponse } from '../services/geminiLeetCodeInterviewer';
 import type { AudioCueType } from './useRealtimeVoiceSession';
 
 interface UseInterviewerAgentProps {
   problem: CodingProblem;
   language: SupportedLanguage;
+  candidateCode?: string;
   speak: (text: string) => void;
   playAudioCue?: (type: AudioCueType) => void;
   lastCodeEditTime?: number;
@@ -30,7 +24,8 @@ interface UseInterviewerAgentProps {
 
 export function useInterviewerAgent({
   problem,
-  language: _language,
+  language,
+  candidateCode = '',
   speak,
   playAudioCue,
   lastCodeEditTime = 0,
@@ -41,6 +36,8 @@ export function useInterviewerAgent({
   const [mood, setMood] = useState<InterviewMood>('Attentive');
   const [messages, setMessages] = useState<Message[]>([]);
   const [hintIndex, setHintIndex] = useState(0);
+  const [isAiThinking, setIsAiThinking] = useState(false);
+  const [currentCaption, setCurrentCaption] = useState<string>('');
 
   const speakRef = useRef(speak);
   useEffect(() => {
@@ -51,6 +48,16 @@ export function useInterviewerAgent({
   useEffect(() => {
     playAudioCueRef.current = playAudioCue;
   }, [playAudioCue]);
+
+  const candidateCodeRef = useRef(candidateCode);
+  useEffect(() => {
+    candidateCodeRef.current = candidateCode;
+  }, [candidateCode]);
+
+  const messagesRef = useRef(messages);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   // Track candidate activity to detect idle state (> 90 seconds)
   const lastActiveRef = useRef<number>(0);
@@ -70,7 +77,7 @@ export function useInterviewerAgent({
       hintLevel?: number
     ) => {
       const newMessage: Message = {
-        id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+        id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
         sender,
         text,
         timestamp: new Date(),
@@ -91,161 +98,199 @@ export function useInterviewerAgent({
     [personaType]
   );
 
-  // Progressive Socratic Hint Dispenser
-  const requestHint = useCallback(() => {
-    lastActiveRef.current = Date.now();
-    const currentLevel = (hintIndex % problem.hints.length) + 1;
-    const rawHint = problem.hints[hintIndex % problem.hints.length];
-    setHintIndex(prev => prev + 1);
-
-    const hintText = generateIdleNudge(personaType, rawHint, currentLevel, problem.hints.length);
-    setMood('Probing Trade-offs');
-    addMessage('ai', hintText, true, currentLevel);
-  }, [addMessage, hintIndex, problem.hints, personaType]);
-
-  // Idle Monitor: Trigger Socratic nudge if inactive for > 90 seconds in CODING phase
+  // Initial greeting when problem changes or persona switches
   useEffect(() => {
-    const idleCheckInterval = setInterval(() => {
-      if (interviewState !== 'CODING') return;
+    let isCancelled = false;
 
-      const idleDuration = Date.now() - lastActiveRef.current;
-      if (idleDuration >= 90000 && !hasTriggeredIdleNudgeRef.current) {
-        hasTriggeredIdleNudgeRef.current = true;
-        const currentLevel = (hintIndex % problem.hints.length) + 1;
-        const nextHint = problem.hints[hintIndex % problem.hints.length];
-        setHintIndex(prev => prev + 1);
-
-        const nudgeText = generateIdleNudge(personaType, nextHint, currentLevel, problem.hints.length);
-        setMood('Probing Trade-offs');
-        addMessage('ai', nudgeText, true, currentLevel);
-      }
-    }, 10000);
-
-    return () => clearInterval(idleCheckInterval);
-  }, [interviewState, hintIndex, problem.hints, addMessage, personaType]);
-
-  // Initial greeting when session starts, problem changes, or persona switches
-  useEffect(() => {
-    const greetingText = generateGreeting(personaType, problem);
-
-    const timer = setTimeout(() => {
+    const startInterview = async () => {
       setMessages([]);
       setInterviewState('GREETING');
       setMood('Attentive');
       setHintIndex(0);
       lastActiveRef.current = Date.now();
       hasTriggeredIdleNudgeRef.current = false;
-      addMessage('ai', greetingText, true);
-      playAudioCueRef.current?.('start');
-    }, 350);
+      setIsAiThinking(true);
 
-    return () => clearTimeout(timer);
-  }, [problem.id, personaType, addMessage, problem]);
+      try {
+        const output = await generateGeminiLeetCodeResponse({
+          problem,
+          persona: personaType,
+          messages: [],
+          candidateCode: candidateCodeRef.current || '',
+          language
+        });
 
-  // Evaluates candidate's vocal or typed message
+        if (isCancelled) return;
+
+        setIsAiThinking(false);
+        setMood(output.mood || 'Attentive');
+        setCurrentCaption(output.caption || output.text);
+        addMessage('ai', output.text, true);
+        playAudioCueRef.current?.('start');
+      } catch (e) {
+        if (isCancelled) return;
+        setIsAiThinking(false);
+        const fallback =
+          personaType === 'mentor'
+            ? `Hi! I'm Sarah Chen, Staff Engineer at MockMaster. Great to meet you! Today we will look at **${problem.title}** (${problem.difficulty} — ${problem.category}). Take a look at the description on the right. How are you thinking of approaching this?`
+            : `Hello, I am Marcus Vance. Today's problem is **${problem.title}**. Before writing code, describe your algorithmic approach and runtime expectations.`;
+        setCurrentCaption(fallback);
+        addMessage('ai', fallback, true);
+        playAudioCueRef.current?.('start');
+      }
+    };
+
+    const timer = setTimeout(() => {
+      startInterview();
+    }, 200);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [problem.id, personaType, language]);
+
+  // Evaluates candidate's vocal or typed message via Gemini
   const handleUserMessage = useCallback(
-    (text: string) => {
+    async (text: string) => {
       if (!text.trim()) return;
       lastActiveRef.current = Date.now();
 
-      // Add user message to conversation
-      addMessage('user', text, false);
+      // 1. Add user message to conversation immediately
+      const userMsg: Message = {
+        id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        sender: 'user',
+        text,
+        timestamp: new Date()
+      };
+      const updatedMessages = [...messagesRef.current, userMsg];
+      setMessages(updatedMessages);
 
-      const lower = text.toLowerCase();
+      setIsAiThinking(true);
 
-      setTimeout(() => {
-        // 1. Candidate asks for hints
-        if (
-          lower.includes('hint') ||
-          lower.includes('stuck') ||
-          lower.includes('clue') ||
-          lower.includes('help') ||
-          lower.includes('nudge')
-        ) {
-          requestHint();
-          return;
+      try {
+        const output = await generateGeminiLeetCodeResponse({
+          problem,
+          persona: personaType,
+          messages: updatedMessages,
+          userMessage: text,
+          candidateCode: candidateCodeRef.current || '',
+          language
+        });
+
+        setIsAiThinking(false);
+        setMood(output.mood || 'Evaluating Strategy');
+        if (output.nextState) {
+          setInterviewState(output.nextState);
         }
-
-        // 2. State-specific flow
-        if (interviewState === 'GREETING' || interviewState === 'PROBLEM_CLARIFICATION' || interviewState === 'CODING') {
-          const feedback = generateStrategyFeedback(personaType, text, problem);
-          setMood(feedback.mood);
-          setInterviewState(feedback.nextState);
-          addMessage('ai', feedback.text, true);
-        } else if (interviewState === 'REVIEW_AND_COMPLEXITY') {
-          const feedback = generateComplexityFeedback(personaType, text, problem);
-          setMood(feedback.mood);
-          if (feedback.completed) {
-            setInterviewState('COMPLETED');
-            playAudioCueRef.current?.('success');
-          }
-          addMessage('ai', feedback.text, true);
-        } else if (interviewState === 'COMPLETED') {
-          setMood('Impressed');
-          addMessage(
-            'ai',
-            `You've mastered this problem! Select another challenge from the top navigation or try switching personas to practice different interview pressures.`,
-            true
-          );
-        }
-      }, 450);
-    },
-    [addMessage, interviewState, personaType, problem, requestHint]
-  );
-
-  // Evaluates code execution outcome
-  const handleExecutionResult = useCallback(
-    (execResult: ExecutionResult, testResults?: TestCaseResult[]) => {
-      lastActiveRef.current = Date.now();
-
-      // 1. Crash or Compilation Error
-      if (execResult.stderr || execResult.code !== 0) {
-        const errorText = execResult.stderr || 'Runtime error';
-        const feedback = generateTracebackFeedback(personaType, errorText);
-        setMood(feedback.mood);
-        playAudioCueRef.current?.('alert');
-        addMessage('ai', feedback.text, true);
-        return;
-      }
-
-      // 2. Test Cases Evaluation (Submission)
-      if (testResults && testResults.length > 0) {
-        const failedCases = testResults.filter(tc => !tc.passed);
-        const passedCount = testResults.length - failedCases.length;
-
-        if (failedCases.length === 0) {
-          playAudioCueRef.current?.('success');
-        } else {
-          playAudioCueRef.current?.('alert');
-        }
-
-        const feedback = generateSubmissionFeedback(
-          personaType,
-          passedCount,
-          testResults.length,
-          failedCases[0],
-          problem
-        );
-
-        setMood(feedback.mood);
-        if (feedback.nextState) {
-          setInterviewState(feedback.nextState);
-        }
-        addMessage('ai', feedback.text, true);
-        return;
-      }
-
-      // 3. Normal Run Code
-      if (execResult.stdout) {
-        setMood('Evaluating Strategy');
+        setCurrentCaption(output.caption || output.text);
+        addMessage('ai', output.text, true);
+      } catch (err) {
+        console.error('Failed to generate Gemini response:', err);
+        setIsAiThinking(false);
         addMessage(
           'ai',
-          `Your code ran and printed output to the console. When you are confident, click "Submit" to test your solution against our full suite.`,
+          `I heard your point about "${text}". Let's consider how we can break this down: what would be the simplest brute force approach here?`,
           true
         );
       }
     },
-    [addMessage, personaType, problem]
+    [addMessage, personaType, problem, language]
+  );
+
+  // Progressive Socratic Hint Dispenser via Gemini
+  const requestHint = useCallback(async () => {
+    lastActiveRef.current = Date.now();
+    const currentLevel = (hintIndex % problem.hints.length) + 1;
+    setHintIndex(prev => prev + 1);
+
+    const hintPrompt = `I could use a hint (Level ${currentLevel} of ${problem.hints.length}) on how to approach "${problem.title}". Can you give me a subtle clue without giving away the full answer?`;
+
+    // Add user hint request
+    const userMsg: Message = {
+      id: `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      sender: 'user',
+      text: hintPrompt,
+      timestamp: new Date()
+    };
+    const updatedMessages = [...messagesRef.current, userMsg];
+    setMessages(updatedMessages);
+
+    setIsAiThinking(true);
+
+    try {
+      const output = await generateGeminiLeetCodeResponse({
+        problem,
+        persona: personaType,
+        messages: updatedMessages,
+        userMessage: hintPrompt,
+        candidateCode: candidateCodeRef.current || '',
+        language
+      });
+
+      setIsAiThinking(false);
+      setMood('Probing Trade-offs');
+      setCurrentCaption(output.caption || output.text);
+      addMessage('ai', output.text, true, currentLevel);
+    } catch {
+      setIsAiThinking(false);
+      const rawHint = problem.hints[hintIndex % problem.hints.length];
+      addMessage('ai', `Here's a clue: ${rawHint}`, true, currentLevel);
+    }
+  }, [addMessage, hintIndex, problem, personaType, language]);
+
+  // Evaluates code execution outcome (Run or Submit) via Gemini
+  const handleExecutionResult = useCallback(
+    async (execResult: ExecutionResult, testResults?: TestCaseResult[]) => {
+      lastActiveRef.current = Date.now();
+      const isSubmission = Boolean(testResults && testResults.length > 0);
+
+      // Play audio cues
+      if (execResult.stderr || execResult.code !== 0) {
+        playAudioCueRef.current?.('alert');
+      } else if (testResults && testResults.length > 0) {
+        const allPassed = testResults.every(tc => tc.passed);
+        if (allPassed) {
+          playAudioCueRef.current?.('success');
+        } else {
+          playAudioCueRef.current?.('alert');
+        }
+      }
+
+      setIsAiThinking(true);
+
+      try {
+        const output = await generateGeminiLeetCodeResponse({
+          problem,
+          persona: personaType,
+          messages: messagesRef.current,
+          candidateCode: candidateCodeRef.current || '',
+          language,
+          executionResult: execResult,
+          testResults,
+          isCodeRun: !isSubmission,
+          isSubmission
+        });
+
+        setIsAiThinking(false);
+        setMood(output.mood || (isSubmission ? 'Complexity Review' : 'Evaluating Strategy'));
+        if (output.nextState) {
+          setInterviewState(output.nextState);
+        }
+        setCurrentCaption(output.caption || output.text);
+        addMessage('ai', output.text, true);
+      } catch (err) {
+        console.error('Failed to analyze execution result with Gemini:', err);
+        setIsAiThinking(false);
+        if (execResult.stderr) {
+          addMessage('ai', `I noticed a runtime error in your code: \`${execResult.stderr.slice(0, 100)}\`. Let's check where that happened.`, true);
+        } else if (testResults) {
+          const passed = testResults.filter(t => t.passed).length;
+          addMessage('ai', `You passed ${passed}/${testResults.length} test cases. Review the failing case on the right to see what edge condition was missed.`, true);
+        }
+      }
+    },
+    [addMessage, personaType, problem, language]
   );
 
   const resetInterview = useCallback(() => {
@@ -255,10 +300,7 @@ export function useInterviewerAgent({
     setHintIndex(0);
     lastActiveRef.current = Date.now();
     hasTriggeredIdleNudgeRef.current = false;
-    const greetingText = generateGreeting(personaType, problem);
-    addMessage('ai', greetingText, true);
-    playAudioCueRef.current?.('start');
-  }, [addMessage, personaType, problem]);
+  }, []);
 
   return {
     personaType,
@@ -267,6 +309,8 @@ export function useInterviewerAgent({
     interviewState,
     messages,
     hintIndex,
+    isAiThinking,
+    currentCaption,
     handleUserMessage,
     handleExecutionResult,
     requestHint,
