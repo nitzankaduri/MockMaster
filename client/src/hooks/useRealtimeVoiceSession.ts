@@ -314,6 +314,8 @@ export function useRealtimeVoiceSession({
     (text: string) => {
       if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
       if (isMuted) return;
+      // Sarah (mentor) communicates exclusively via text chat, never speak out loud
+      if (persona === 'mentor') return;
 
       const plainText = text
         .replace(/`{1,3}[^`]*`{1,3}/g, 'code snippet')
@@ -330,40 +332,21 @@ export function useRealtimeVoiceSession({
 
       const utterance = new SpeechSynthesisUtterance(plainText);
 
-      // Persona voice tuning
-      if (persona === 'mentor') {
-        utterance.pitch = 1.05;
-        utterance.rate = 1.02;
-      } else {
-        utterance.pitch = 0.92;
-        utterance.rate = 1.06;
-      }
+      // Voice tuning for Bar Raiser (Marcus)
+      utterance.pitch = 0.92;
+      utterance.rate = 1.06;
 
-      // Voice selection
+      // Voice selection for Bar Raiser
       const availableVoices = voicesRef.current.length > 0 ? voicesRef.current : window.speechSynthesis.getVoices();
-      let chosenVoice: SpeechSynthesisVoice | undefined;
-
-      if (persona === 'mentor') {
-        chosenVoice = availableVoices.find(
-          v =>
-            (v.name.includes('Samantha') ||
-             v.name.includes('Google US English') ||
-             v.name.includes('Zira') ||
-             v.name.includes('Jenny') ||
-             v.name.includes('Natural')) &&
-            v.lang.startsWith('en')
-        );
-      } else {
-        chosenVoice = availableVoices.find(
-          v =>
-            (v.name.includes('David') ||
-             v.name.includes('Guy') ||
-             v.name.includes('Mark') ||
-             v.name.includes('George') ||
-             v.name.includes('Google UK English Male')) &&
-            v.lang.startsWith('en')
-        );
-      }
+      let chosenVoice: SpeechSynthesisVoice | undefined = availableVoices.find(
+        v =>
+          (v.name.includes('David') ||
+           v.name.includes('Guy') ||
+           v.name.includes('Mark') ||
+           v.name.includes('George') ||
+           v.name.includes('Google UK English Male')) &&
+          v.lang.startsWith('en')
+      );
 
       if (!chosenVoice) {
         chosenVoice = availableVoices.find(v => v.lang.startsWith('en'));

@@ -268,3 +268,4 @@ ${recentHistory}
   clearTimeout(timeoutId);
   return fallback;
 }
+

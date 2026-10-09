@@ -89,7 +89,9 @@ export function useInterviewerAgent({
 
       setMessages(prev => [...prev, newMessage]);
 
-      if (shouldSpeak && sender === 'ai') {
+      // Sarah (mentor) communicates exclusively via text chat, never speak messages aloud
+      const isSarah = personaType === 'mentor';
+      if (shouldSpeak && sender === 'ai' && !isSarah) {
         speakRef.current(text);
       }
 

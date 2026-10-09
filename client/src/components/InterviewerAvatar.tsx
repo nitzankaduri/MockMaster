@@ -50,6 +50,12 @@ export const InterviewerAvatar: React.FC<InterviewerAvatarProps> = ({
   };
 
   const getStatusLabel = () => {
+    if (personaType === 'mentor') {
+      if (visualState === 'THINKING') {
+        return { label: 'Thinking...', color: 'text-violet-400 bg-violet-950 border-violet-500/50' };
+      }
+      return { label: 'Chat Only', color: 'text-cyan-300 bg-cyan-950/80 border-cyan-500/40' };
+    }
     switch (visualState) {
       case 'SPEAKING':
         return { label: 'Speaking', color: 'text-cyan-400 bg-cyan-950 border-cyan-500/50' };
@@ -84,7 +90,7 @@ export const InterviewerAvatar: React.FC<InterviewerAvatarProps> = ({
               {activePersona.name}
             </span>
             <span className="text-[10px] text-slate-400 hidden sm:inline">
-              ({personaType === 'mentor' ? 'Mentor' : 'Bar Raiser'})
+              ({personaType === 'mentor' ? 'Mentor • Chat Only' : 'Bar Raiser • Voice'})
             </span>
             <ChevronDown className="w-3 h-3 text-slate-400" />
           </button>
