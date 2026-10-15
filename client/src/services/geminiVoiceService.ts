@@ -139,6 +139,14 @@ export function stopSpeaking(): void {
     }
     currentAudioUrl = null;
   }
+
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch {
+      // Ignored
+    }
+  }
 }
 
 /**
@@ -172,7 +180,7 @@ export async function generateInterviewerSpeech(
     .trim();
 
   // Models verified to support native audio generation
-  const models = ['gemini-3.8-flash-tts', 'gemini-2.5-flash-preview-tts', 'gemini-2.0-flash'];
+  const models = ['gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview'];
 
   for (const model of models) {
     try {
@@ -184,7 +192,7 @@ export async function generateInterviewerSpeech(
             role: 'user',
             parts: [
               {
-                text: `Speak the following Hebrew text naturally and clearly with warm, professional Israeli Hebrew pronunciation and appropriate pauses:\n\n${cleanPrompt}`
+                text: cleanPrompt
               }
             ]
           }
@@ -231,7 +239,7 @@ export async function generateInterviewerSpeech(
       const rawBytes = base64ToUint8Array(base64Data);
 
       let audioBlob: Blob;
-      if (mimeType.includes('pcm')) {
+      if (mimeType.includes('pcm') || mimeType.includes('l16')) {
         const match = mimeType.match(/rate=(\d+)/);
         const sampleRate = match ? parseInt(match[1], 10) : 24000;
         audioBlob = pcmToWav(rawBytes, sampleRate);
@@ -255,7 +263,7 @@ export async function generateInterviewerSpeech(
 }
 
 /**
- * High-level speech playback wrapper with instant barge-in support and equalizer events
+ * High-level speech playback wrapper with instant barge-in support and SpeechSynthesis fallback
  */
 export async function playInterviewerSpeech(
   text: string,
@@ -289,9 +297,8 @@ export async function playInterviewerSpeech(
     };
 
     audio.onerror = (e) => {
-      console.warn('Gemini audio element playback error:', e);
-      stopSpeaking();
-      onEnd?.();
+      console.warn('Gemini audio element playback error, falling back to Web Speech:', e);
+      playWebSpeechFallback(clean, onStart, onEnd);
     };
 
     await audio.play();
@@ -299,7 +306,59 @@ export async function playInterviewerSpeech(
     if (err.name === 'AbortError') {
       return; // Interrupted by barge-in
     }
-    console.error('Failed to generate or play Gemini speech:', err);
+    console.warn('Gemini audio playback unavailable, using browser SpeechSynthesis fallback:', err);
+    playWebSpeechFallback(clean, onStart, onEnd);
+  }
+}
+
+/**
+ * Fallback to browser Web Speech API SpeechSynthesis for Hebrew
+ */
+function playWebSpeechFallback(
+  text: string,
+  onStart?: () => void,
+  onEnd?: () => void
+): void {
+  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+    stopSpeaking();
+    onEnd?.();
+    return;
+  }
+
+  try {
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'he-IL';
+
+    const voices = window.speechSynthesis.getVoices();
+    const heVoice = voices.find((v) => v.lang.startsWith('he'));
+    if (heVoice) {
+      utterance.voice = heVoice;
+    }
+
+    utterance.pitch = 1.05;
+    utterance.rate = 1.0;
+
+    utterance.onstart = () => {
+      onStart?.();
+    };
+
+    utterance.onend = () => {
+      stopSpeaking();
+      onEnd?.();
+    };
+
+    utterance.onerror = (e) => {
+      if (e.error !== 'canceled') {
+        console.warn('Browser SpeechSynthesis error:', e);
+      }
+      stopSpeaking();
+      onEnd?.();
+    };
+
+    window.speechSynthesis.speak(utterance);
+  } catch (e) {
+    console.error('SpeechSynthesis fallback error:', e);
     stopSpeaking();
     onEnd?.();
   }

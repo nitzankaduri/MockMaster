@@ -16,7 +16,8 @@ import {
   Loader2,
   Key,
   ExternalLink,
-  Briefcase
+  Briefcase,
+  RotateCcw
 } from 'lucide-react';
 import { useHebrewInterviewSession } from '../hooks/useHebrewInterviewSession';
 import { DEFAULT_ROLE_PRESETS } from '../types/hebrewInterview';
@@ -41,10 +42,13 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
     currentSubtitle,
     isListening,
     isSpeaking,
+    isAiThinking,
+    interimTranscript,
     speechError,
     stopSpeaking,
     toggleListening,
     repeatQuestion,
+    submitCurrentSpeech,
     startSession,
     handleCandidateResponse,
     finishInterview,
@@ -416,16 +420,21 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
               </p>
 
               {/* Dynamic Status Indicator */}
-              <div className="mt-3 inline-flex items-center gap-2 px-4 py-1 rounded-full text-xs font-semibold border backdrop-blur-md transition-all">
-                {isSpeaking ? (
+              <div className="mt-3 inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold border backdrop-blur-md transition-all">
+                {isAiThinking ? (
+                  <span className="flex items-center gap-2 text-amber-300 border-amber-500/40 bg-amber-950/80 shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                    רותם חושבת ומנסחת שאלת המשך...
+                  </span>
+                ) : isSpeaking ? (
                   <span className="flex items-center gap-2 text-mint-300 border-mint-500/40 bg-mint-950/80 shadow-glow-mint">
                     <span className="w-2 h-2 rounded-full bg-mint-400 animate-ping" />
-                    מדברת כעת (Gemini Voice)...
+                    רותם מדברת כעת (האזן לשאלה)...
                   </span>
                 ) : isListening ? (
-                  <span className="flex items-center gap-2 text-mint-300 border-mint-500/40 bg-mint-950/80 shadow-glow-mint">
-                    <span className="w-2 h-2 rounded-full bg-mint-400 animate-ping" />
-                    מקשיבה לתשובה שלך בעברית...
+                  <span className="flex items-center gap-2 text-emerald-300 border-emerald-500/40 bg-emerald-950/80 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                    תורך לדבר! המיקרופון מקשיב לתשובתך...
                   </span>
                 ) : (
                   <span className="flex items-center gap-2 text-slate-400 border-white/5 bg-[#0e151d]">
@@ -437,10 +446,38 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
             </div>
           </div>
 
-          {/* Subtitles Strip at bottom of stage */}
-          <div className="absolute inset-x-4 bottom-4 z-20 flex flex-col items-center">
+          {/* Subtitles & Live Candidate Speech Strip at bottom of stage */}
+          <div className="absolute inset-x-4 bottom-4 z-20 flex flex-col items-center gap-2">
+            {/* Live Candidate Speech Banner */}
+            {interimTranscript && (
+              <div className="max-w-2xl w-full px-4 py-2.5 rounded-2xl bg-[#090f17]/95 border border-emerald-500/50 text-emerald-200 text-xs shadow-glow-card-mint flex items-center justify-between gap-3 animate-in fade-in">
+                <div className="flex items-center gap-2 truncate">
+                  <Mic className="w-4 h-4 text-emerald-400 shrink-0 animate-pulse" />
+                  <span className="truncate">
+                    <strong className="text-emerald-300">מקשיבה לך:</strong> {interimTranscript}
+                  </span>
+                </div>
+                <button
+                  onClick={submitCurrentSpeech}
+                  className="shrink-0 px-3 py-1 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-[11px] transition-all shadow-md flex items-center gap-1.5"
+                  title="שלח תשובה זו כעת"
+                >
+                  <span>שלח תשובה</span>
+                  <Send className="w-3 h-3" />
+                </button>
+              </div>
+            )}
+
+            {/* AI Thinking Floating Banner */}
+            {isAiThinking && (
+              <div className="max-w-md w-full px-4 py-2 rounded-full bg-amber-950/85 border border-amber-500/40 text-amber-200 text-xs text-center backdrop-blur-md shadow-lg flex items-center justify-center gap-2 animate-in fade-in">
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+                <span>רותם מעבדת את תשובתך ומנסחת שאלת המשך...</span>
+              </div>
+            )}
+
             {currentSubtitle && (
-              <div className="max-w-2xl px-6 py-3.5 rounded-2xl bg-[#060809]/90 backdrop-blur-xl border border-mint-500/30 text-slate-100 text-sm text-center shadow-[0_4px_30px_rgba(0,0,0,0.85)] leading-relaxed animate-in fade-in duration-200">
+              <div className="max-w-2xl w-full px-6 py-3.5 rounded-2xl bg-[#060809]/90 backdrop-blur-xl border border-mint-500/30 text-slate-100 text-sm text-center shadow-[0_4px_30px_rgba(0,0,0,0.85)] leading-relaxed animate-in fade-in duration-200">
                 <div className="flex items-center justify-between gap-3 mb-1.5">
                   <span className="text-[10px] font-mono text-mint-400 block font-bold">
                     תמלול המראיינת (רותם):
@@ -459,7 +496,7 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
             )}
 
             {speechError && (
-              <div className="mt-2 max-w-xl px-4 py-2 rounded-full bg-amber-950/80 border border-amber-500/40 text-amber-200 text-xs text-center backdrop-blur-md animate-in fade-in">
+              <div className="mt-1 max-w-xl px-4 py-2 rounded-full bg-amber-950/80 border border-amber-500/40 text-amber-200 text-xs text-center backdrop-blur-md animate-in fade-in">
                 {speechError}
               </div>
             )}
@@ -591,7 +628,17 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
             className="px-4 py-2.5 rounded-full bg-[#111822] hover:bg-[#16212e] border border-white/10 text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition-colors"
           >
             <Volume2 className="w-4 h-4 text-mint-400" />
-            <span>השמע שאלה בקול</span>
+            <span>השמע שאלה</span>
+          </button>
+
+          {/* Restart Session */}
+          <button
+            onClick={() => restartSession()}
+            title="התחל את הראיון מחדש מההתחלה"
+            className="px-4 py-2.5 rounded-full bg-[#111822] hover:bg-[#16212e] border border-white/10 text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition-colors"
+          >
+            <RotateCcw className="w-4 h-4 text-cyan-400" />
+            <span>התחל מחדש</span>
           </button>
 
           {/* Stop AI Speaking (if talking) */}
@@ -641,7 +688,10 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
           onClose={() => setIsReportOpen(false)}
           report={report}
           turns={turns}
-          onRestart={restartSession}
+          onRestart={() => {
+            setIsReportOpen(false);
+            restartSession();
+          }}
           onReevaluate={handleReevaluate}
           isReevaluating={isAnalyzing}
           targetRole={targetRole}

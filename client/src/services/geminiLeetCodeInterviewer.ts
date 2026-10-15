@@ -28,8 +28,8 @@ export interface LeetCodeAgentOutput {
   nextState?: InterviewState;
 }
 
-const PRIMARY_MODEL = 'gemini-2.5-flash';
-const FALLBACK_MODEL = 'gemini-1.5-flash';
+const PRIMARY_MODEL = 'gemini-flash-latest';
+const FALLBACK_MODEL = 'gemini-3-flash-preview';
 
 /**
  * Builds the system instructions for the AI Interviewer persona in Hebrew.
@@ -189,7 +189,12 @@ ${candidateCode || '(עדיין לא נכתב קוד)'}
 
   contents.push({ role: 'user', parts: [{ text: currentPromptText }] });
 
-  const modelsToTry = [PRIMARY_MODEL, FALLBACK_MODEL, 'gemini-1.5-pro', 'gemini-pro'];
+  const modelsToTry = [
+    PRIMARY_MODEL,
+    FALLBACK_MODEL,
+    'gemini-3.1-flash-lite-preview',
+    'gemini-flash-lite-latest'
+  ];
 
   for (const modelName of modelsToTry) {
     try {

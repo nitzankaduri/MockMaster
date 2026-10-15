@@ -219,11 +219,10 @@ ${recentHistory}
     'gemini-flash-lite-latest'
   ];
 
-  // 4 second timeout for quick voice dialogue turnaround
-  const abortController = new AbortController();
-  const timeoutId = setTimeout(() => abortController.abort(), 4200);
-
   for (const model of models) {
+    const modelController = new AbortController();
+    const modelTimeout = setTimeout(() => modelController.abort(), 4500);
+
     try {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -238,9 +237,11 @@ ${recentHistory}
               maxOutputTokens: 250
             }
           }),
-          signal: abortController.signal
+          signal: modelController.signal
         }
       );
+
+      clearTimeout(modelTimeout);
 
       if (!response.ok) {
         continue;
@@ -250,7 +251,6 @@ ${recentHistory}
       const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text;
 
       if (rawText && rawText.trim().length > 20) {
-        clearTimeout(timeoutId);
         // Clean markdown bolding/italics for TTS
         const clean = rawText
           .replace(/\*\*/g, '')
@@ -261,11 +261,11 @@ ${recentHistory}
         return clean;
       }
     } catch {
+      clearTimeout(modelTimeout);
       // Continue to next model or fallback
     }
   }
 
-  clearTimeout(timeoutId);
   return fallback;
 }
 

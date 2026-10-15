@@ -434,7 +434,10 @@ export const InterviewReportModal: React.FC<InterviewReportModalProps> = ({
             )}
 
             <button
-              onClick={onRestart}
+              onClick={() => {
+                onClose();
+                onRestart();
+              }}
               className="btn-mint-hero px-6 py-2.5 rounded-full font-bold text-xs shadow-glow-mint flex items-center gap-2 transition-all"
             >
               <RotateCcw className="w-3.5 h-3.5" />
