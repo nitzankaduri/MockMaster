@@ -75,10 +75,12 @@ export function useHebrewInterviewSession({
   const targetRoleRef = useRef<string>(targetRole);
   const stageRef = useRef<SessionStage>(currentStage);
   const turnsRef = useRef<Turn[]>(turns);
-  const isSpeakingRef = useRef<boolean>(isSpeaking);
-  const isListeningRef = useRef<boolean>(isListening);
+  const isSpeakingRef = useRef<boolean>(false);
+  const isListeningRef = useRef<boolean>(false);
+  const isSessionActiveRef = useRef<boolean>(false);
   const isProcessingRef = useRef<boolean>(false);
-  const accumulatedTextRef = useRef<string>('');
+  const accumulatedFinalRef = useRef<string>('');
+  const candidateSpeechRef = useRef<string>('');
   const silenceTimerRef = useRef<any>(null);
   const handleResponseRef = useRef<(text: string) => void>(() => {});
 
@@ -102,6 +104,10 @@ export function useHebrewInterviewSession({
     isListeningRef.current = isListening;
   }, [isListening]);
 
+  useEffect(() => {
+    isSessionActiveRef.current = isSessionActive;
+  }, [isSessionActive]);
+
   // Duration timer
   useEffect(() => {
     if (!isSessionActive) return;
@@ -122,19 +128,61 @@ export function useHebrewInterviewSession({
     return newTurn;
   }, []);
 
-  // Speak with native Gemini 2.0 Flash Audio or browser fallback
-  const speakText = useCallback(async (textToSpeak: string) => {
-    try {
-      await playInterviewerSpeech(
-        textToSpeak,
-        () => setIsSpeaking(true),
-        () => setIsSpeaking(false)
-      );
-    } catch (err) {
-      console.warn('Interviewer audio playback notice:', err);
-      setIsSpeaking(false);
+  // Dedicated helper to start/resume speech recognition cleanly for the candidate
+  const startListening = useCallback(() => {
+    if (!isSessionActiveRef.current) return;
+    accumulatedFinalRef.current = '';
+    candidateSpeechRef.current = '';
+    setInterimTranscript('');
+    setIsListening(true);
+    isListeningRef.current = true;
+
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.start();
+      } catch {
+        // Recognition might be in transitional state; retry shortly
+        setTimeout(() => {
+          if (isListeningRef.current && !isSpeakingRef.current && !isProcessingRef.current) {
+            try {
+              recognitionRef.current?.start();
+            } catch {}
+          }
+        }, 150);
+      }
     }
   }, []);
+
+  // Speak with native Gemini Voice Audio or browser SpeechSynthesis fallback
+  const speakText = useCallback(
+    async (textToSpeak: string) => {
+      try {
+        await playInterviewerSpeech(
+          textToSpeak,
+          () => {
+            setIsSpeaking(true);
+            isSpeakingRef.current = true;
+            // Abort recognition while interviewer speaks so no speaker echo is captured
+            try {
+              recognitionRef.current?.abort();
+            } catch {}
+          },
+          () => {
+            setIsSpeaking(false);
+            isSpeakingRef.current = false;
+            // Interviewer finished speaking -> candidate's turn to speak!
+            startListening();
+          }
+        );
+      } catch (err) {
+        console.warn('Interviewer audio playback notice:', err);
+        setIsSpeaking(false);
+        isSpeakingRef.current = false;
+        startListening();
+      }
+    },
+    [startListening]
+  );
 
   // Candidate Response Handler & State Machine Transition
   const handleCandidateResponse = useCallback(
@@ -150,7 +198,8 @@ export function useHebrewInterviewSession({
       isProcessingRef.current = true;
       setIsAiThinking(true);
       setInterimTranscript('');
-      accumulatedTextRef.current = '';
+      accumulatedFinalRef.current = '';
+      candidateSpeechRef.current = '';
 
       if (silenceTimerRef.current) {
         clearTimeout(silenceTimerRef.current);
@@ -180,6 +229,7 @@ export function useHebrewInterviewSession({
         }
 
         setCurrentStage(nextStage);
+        stageRef.current = nextStage;
 
         // 3. Dynamically generate role-tailored question
         const dynamicQuestion = await generateDynamicRoleTurnWithGemini({
@@ -196,7 +246,7 @@ export function useHebrewInterviewSession({
         // 4. Record interviewer turn
         addTurn('interviewer', dynamicQuestion);
 
-        // 5. Play speech
+        // 5. Play speech (when Rotem finishes, recognition starts listening)
         await speakText(dynamicQuestion);
       } catch (err) {
         console.error('Error handling candidate response:', err);
@@ -212,15 +262,16 @@ export function useHebrewInterviewSession({
     handleResponseRef.current = handleCandidateResponse;
   }, [handleCandidateResponse]);
 
-  // Flush and immediately submit any accumulated candidate speech
+  // Flush and immediately submit any candidate speech
   const submitCurrentSpeech = useCallback(() => {
     if (silenceTimerRef.current) {
       clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = null;
     }
-    const pendingText = (accumulatedTextRef.current + ' ' + interimTranscript).trim();
-    if (pendingText.length > 2) {
-      accumulatedTextRef.current = '';
+    const pendingText = (candidateSpeechRef.current || interimTranscript).trim();
+    if (pendingText.length >= 2) {
+      accumulatedFinalRef.current = '';
+      candidateSpeechRef.current = '';
       setInterimTranscript('');
       handleResponseRef.current(pendingText);
     }
@@ -243,48 +294,48 @@ export function useHebrewInterviewSession({
     recognition.lang = 'he-IL';
 
     recognition.onresult = (event: any) => {
-      // If interviewer is speaking, ignore incoming mic audio to prevent acoustic feedback loop!
-      if (isSpeakingRef.current) {
+      // If interviewer is speaking or AI is currently generating response, ignore mic audio
+      if (isSpeakingRef.current || isProcessingRef.current) {
         return;
       }
 
-      // If AI is currently generating response, do not process new mic chunks
-      if (isProcessingRef.current) {
-        return;
-      }
-
-      let interim = '';
       let finalChunk = '';
+      let interimChunk = '';
 
       for (let i = event.resultIndex; i < event.results.length; ++i) {
-        const transcriptPart = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalChunk += transcriptPart + ' ';
+        const item = event.results[i];
+        const piece = item[0]?.transcript || '';
+        if (item.isFinal) {
+          finalChunk += piece + ' ';
         } else {
-          interim += transcriptPart;
+          interimChunk += piece;
         }
       }
 
       if (finalChunk) {
-        accumulatedTextRef.current = (accumulatedTextRef.current + ' ' + finalChunk).trim();
+        accumulatedFinalRef.current = (accumulatedFinalRef.current + ' ' + finalChunk).trim();
       }
 
-      const display = (interim || accumulatedTextRef.current).trim();
-      setInterimTranscript(display);
+      const totalSpeech = (accumulatedFinalRef.current + ' ' + interimChunk).trim();
+      if (!totalSpeech) return;
 
-      // Auto-submit after 1.8 seconds of silence when candidate stops speaking
+      candidateSpeechRef.current = totalSpeech;
+      setInterimTranscript(totalSpeech);
+
+      // Auto-submit after 2.0s of silence when candidate stops speaking
       if (silenceTimerRef.current) {
         clearTimeout(silenceTimerRef.current);
       }
 
       silenceTimerRef.current = setTimeout(() => {
-        const fullAnswer = accumulatedTextRef.current.trim();
+        const fullAnswer = candidateSpeechRef.current.trim();
         if (fullAnswer.length >= 3 && !isSpeakingRef.current && !isProcessingRef.current) {
-          accumulatedTextRef.current = '';
+          accumulatedFinalRef.current = '';
+          candidateSpeechRef.current = '';
           setInterimTranscript('');
           handleResponseRef.current(fullAnswer);
         }
-      }, 1800);
+      }, 2000);
     };
 
     recognition.onerror = (event: any) => {
@@ -298,11 +349,27 @@ export function useHebrewInterviewSession({
     };
 
     recognition.onend = () => {
-      if (isListeningRef.current) {
+      if (
+        isSessionActiveRef.current &&
+        isListeningRef.current &&
+        !isSpeakingRef.current &&
+        !isProcessingRef.current
+      ) {
         try {
           recognition.start();
         } catch {
-          // Ignored
+          setTimeout(() => {
+            if (
+              isSessionActiveRef.current &&
+              isListeningRef.current &&
+              !isSpeakingRef.current &&
+              !isProcessingRef.current
+            ) {
+              try {
+                recognition.start();
+              } catch {}
+            }
+          }, 200);
         }
       }
     };
@@ -328,9 +395,11 @@ export function useHebrewInterviewSession({
     (chosenRole?: string) => {
       stopSpeaking();
       setIsSpeaking(false);
+      isSpeakingRef.current = false;
       setIsAiThinking(false);
       isProcessingRef.current = false;
-      accumulatedTextRef.current = '';
+      accumulatedFinalRef.current = '';
+      candidateSpeechRef.current = '';
       setInterimTranscript('');
       if (silenceTimerRef.current) {
         clearTimeout(silenceTimerRef.current);
@@ -344,37 +413,25 @@ export function useHebrewInterviewSession({
       }
 
       const introText = getRoleIntroPrompt(activeRole);
+      const initialTurn: Turn = {
+        speaker: 'interviewer',
+        text: introText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
 
-      setTurns([
-        {
-          speaker: 'interviewer',
-          text: introText,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
+      setTurns([initialTurn]);
+      turnsRef.current = [initialTurn];
       setCurrentStage('intro');
+      stageRef.current = 'intro';
       setLastQuestion(introText);
       setCurrentSubtitle(introText);
       setReport(null);
       setCallDuration(0);
 
       setIsSessionActive(true);
-      setIsListening(true);
-      isListeningRef.current = true;
+      isSessionActiveRef.current = true;
 
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.abort();
-        } catch {}
-        setTimeout(() => {
-          try {
-            if (isListeningRef.current) {
-              recognitionRef.current.start();
-            }
-          } catch {}
-        }, 150);
-      }
-
+      // Speak intro question (when Rotem finishes, recognition will start listening)
       speakText(introText);
     },
     [speakText]
@@ -417,22 +474,44 @@ export function useHebrewInterviewSession({
     async (customApiKey?: string): Promise<GeminiCritiqueReport> => {
       stopSpeaking();
       setIsSpeaking(false);
+      isSpeakingRef.current = false;
       setIsListening(false);
       isListeningRef.current = false;
+      isSessionActiveRef.current = false;
       if (silenceTimerRef.current) {
         clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = null;
       }
       if (recognitionRef.current) {
         try {
-          recognitionRef.current.stop();
+          recognitionRef.current.abort();
         } catch {}
       }
+
+      // Capture any unsubmitted live candidate speech so it is NEVER lost
+      const pendingSpeech = (candidateSpeechRef.current || interimTranscript).trim();
+      let activeTurns = [...turnsRef.current];
+      if (pendingSpeech.length >= 3) {
+        const last = activeTurns[activeTurns.length - 1];
+        if (!last || last.speaker !== 'candidate' || last.text !== pendingSpeech) {
+          const newTurn: Turn = {
+            speaker: 'candidate',
+            text: pendingSpeech,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          activeTurns.push(newTurn);
+          setTurns(activeTurns);
+          turnsRef.current = activeTurns;
+        }
+        candidateSpeechRef.current = '';
+        setInterimTranscript('');
+      }
+
       setIsAnalyzing(true);
 
       try {
         const critique = await evaluateInterviewWithGemini(
-          turnsRef.current,
+          activeTurns,
           customApiKey,
           targetRoleRef.current
         );
@@ -446,7 +525,7 @@ export function useHebrewInterviewSession({
         setIsAnalyzing(false);
       }
     },
-    [onEvaluationComplete]
+    [interimTranscript, onEvaluationComplete]
   );
 
   // Restart interview completely
@@ -454,9 +533,11 @@ export function useHebrewInterviewSession({
     (chosenRole?: string) => {
       stopSpeaking();
       setIsSpeaking(false);
+      isSpeakingRef.current = false;
       setIsAiThinking(false);
       isProcessingRef.current = false;
-      accumulatedTextRef.current = '';
+      accumulatedFinalRef.current = '';
+      candidateSpeechRef.current = '';
       setInterimTranscript('');
       if (silenceTimerRef.current) {
         clearTimeout(silenceTimerRef.current);
@@ -470,35 +551,24 @@ export function useHebrewInterviewSession({
       }
 
       const introText = getRoleIntroPrompt(activeRole);
-      setTurns([
-        {
-          speaker: 'interviewer',
-          text: introText,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }
-      ]);
+      const initialTurn: Turn = {
+        speaker: 'interviewer',
+        text: introText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+
+      setTurns([initialTurn]);
+      turnsRef.current = [initialTurn];
       setCurrentStage('intro');
+      stageRef.current = 'intro';
       setCallDuration(0);
       setLastQuestion(introText);
       setCurrentSubtitle(introText);
       setReport(null);
       setIsSessionActive(true);
-      setIsListening(true);
-      isListeningRef.current = true;
+      isSessionActiveRef.current = true;
 
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.abort();
-        } catch {}
-        setTimeout(() => {
-          try {
-            if (isListeningRef.current) {
-              recognitionRef.current.start();
-            }
-          } catch {}
-        }, 150);
-      }
-
+      // Speak intro question
       speakText(introText);
     },
     [speakText]

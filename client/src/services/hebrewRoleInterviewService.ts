@@ -213,10 +213,11 @@ ${recentHistory}
 
   // Candidate models that return 200 reliably
   const models = [
-    'gemini-flash-latest',
-    'gemini-3-flash-preview',
     'gemini-3.1-flash-lite-preview',
-    'gemini-flash-lite-latest'
+    'gemini-flash-lite-latest',
+    'gemini-3-flash-preview',
+    'gemini-3.5-flash',
+    'gemini-flash-latest'
   ];
 
   for (const model of models) {

@@ -111,18 +111,27 @@ export function generateHeuristicCritique(
     if (hasAct) actCount++;
     if (hasRes) resCount++;
 
-    if (words > 25 && (hasAct || hasRes) && strongAnswers.length < 2) {
+    if ((words >= 15 || hasAct || hasRes) && strongAnswers.length < 2) {
       strongAnswers.push({
-        quote: text.length > 100 ? text.slice(0, 95) + '...' : text,
-        analysis: 'תשובה ממוקדת עם דוגמה מוחשית מהשטח, הדגשת לקיחת אחריות אישית והשפעה חיובית על הפרויקט.'
+        quote: text.length > 110 ? text.slice(0, 105) + '...' : text,
+        analysis: `התייחסות מעשית וממוקדת לדרישות תפקיד ה-${roleName}, תוך שילוב דוגמה מוחשית והצגת דרך חשיבה מקצועית.`
       });
-    } else if (words < 15 && weakAnswers.length < 2) {
+    } else if (weakAnswers.length < 2) {
       weakAnswers.push({
-        quote: text,
-        critique: 'תשובה תמציתית מדי לראיון התנהגותי. מומלץ להרחיב על הרקע (Situation) והצעדים האישיים שנקטת (Action).'
+        quote: text.length > 90 ? text.slice(0, 85) + '...' : text,
+        critique: `תשובה זו לתפקיד ${roleName} יכולה להיות עמוקה יותר: מומלץ לפרט את הרקע (Situation), את חלקך האישי בפעולה (Action), ולסכם בתוצאה המדידה (Result).`
       });
     }
   });
+
+  // If candidate answered but strongAnswers is empty, pick the longest response
+  if (strongAnswers.length === 0 && candidateTurns.length > 0) {
+    const best = [...candidateTurns].sort((a, b) => b.text.length - a.text.length)[0];
+    strongAnswers.push({
+      quote: best.text.length > 110 ? best.text.slice(0, 105) + '...' : best.text,
+      analysis: `מענה כן וענייני המעיד על מוטיבציה ונכונות להתמודד עם אתגרי תפקיד ה-${roleName}.`
+    });
+  }
 
   const situationCovered = sitCount > 0;
   const taskDefined = taskCount > 0;
@@ -151,15 +160,18 @@ export function generateHeuristicCritique(
   }
 
   const concreteTips = [
-    'הקפד לסיים כל תשובה בתוצאה המדידה (Result): כמה זמן נחסך, בכמה אחוזים שופרו הביצועים, או מה היה המשוב הישיר.',
+    `הקפד לסיים כל תשובה בראיון ל-${roleName} בתוצאה המדידה (Result): כמה זמן נחסך, בכמה אחוזים שופרו הביצועים, או מה היה המשוב הישיר.`,
     'הדגש את החלק האישי שלך ("אני עשיתי", "אני הובלתי") לצד שיתוף הפעולה עם חברי הצוות.',
     'שמור על חלוקת זמנים מאוזנת: 20% רקע, 60% פעולה ופתרון, ו-20% תוצאה ורפלקציה.'
   ];
 
+  const firstCandidateAnswer = candidateTurns[0]?.text || '';
+  const snippet = firstCandidateAnswer.length > 50 ? firstCandidateAnswer.slice(0, 48) + '...' : firstCandidateAnswer;
+
   return {
     overallScore,
     hiringVerdict,
-    executiveSummary: `המועמד הפגין רמת מוכנות טובה בראיון ההתנהגותי לתפקיד ${roleName} (ציון: ${overallScore}/100, החלטה: ${hiringVerdict}). התשובות שיקפו יחסי אנוש חיוביים, ביטחון עצמי וחשיבה עצמאית. יישום מלא של רכיב ה-Result יקפיץ את הסיכויים להצעת עבודה (Offer).`,
+    executiveSummary: `בסימולציית הראיון לתפקיד ${roleName}, המועמד הפגין נכונות ותקשורת חיובית (ציון משוקלל: ${overallScore}/100, החלטה: ${hiringVerdict}). בתשובות (כגון: "${snippet}") ניכר חיבור מקצועי לתחום. חידוד מתודולוגיית STAR והדגשת תוצאות כמותיות (Results) ישדרגו משמעותית את סיכויי הקבלה.`,
     criteriaScores: {
       communication: commScore,
       starMethodology: starScore,
@@ -207,9 +219,19 @@ export async function evaluateInterviewWithGemini(
     .map((t) => `[${t.speaker === 'candidate' ? 'המועמד/ת' : 'רותם (מראיינת HR)'}] (${t.timestamp}): ${t.text}`)
     .join('\n\n');
 
-  const systemDirective = `You are an experienced HR Director and Tech Recruitment Specialist. Analyze the candidate's actual Hebrew responses from the transcript with uncompromising rigor and constructive feedback.
-Target Role for this interview: "${roleName}".
-Evaluate their technical depth, behavioral examples, STAR methodology, and suitability specifically for the position of "${roleName}".
+  const systemDirective = `You are an expert HR Director, VP of People, and Senior Tech Recruiter.
+Analyze the candidate's actual spoken responses from the interview transcript with genuine depth, constructive critique, and actionable feedback.
+Target Role: "${roleName}".
+
+Your evaluation must be grounded 100% in what the candidate ACTUALLY said in their answers:
+1. "overallScore": Realistic score (1-100) reflecting their real depth, clarity, relevance to "${roleName}", and communication.
+2. "hiringVerdict": One of "Strong Hire" (88+), "Hire" (78-87), "Lean Hire" (65-77), "No Hire" (<65).
+3. "executiveSummary": A detailed, insightful 2-4 sentence professional summary in fluent Hebrew analyzing the candidate's actual answers, communication style, technical confidence, and suitability for the "${roleName}" position.
+4. "criteriaScores": { "communication": number, "starMethodology": number, "problemSolving": number, "authenticity": number }.
+5. "starAnalysis": { "situationCovered": boolean, "taskDefined": boolean, "actionExplained": boolean, "resultsQuantified": boolean, "verdict": "Detailed Hebrew feedback on their STAR structure" }.
+6. "strongAnswers": Array of objects: { "quote": "EXACT quote from the candidate's speech", "analysis": "Why this specific answer or point was effective in Hebrew" }. (Provide 1-3 based on what they said).
+7. "weakAnswers": Array of objects: { "quote": "EXACT quote of a brief, vague, or improvable answer", "critique": "Constructive Hebrew explanation of what was missing and how to elevate it" }. (Provide 1-2 if applicable).
+8. "concreteTips": Array of 3-4 highly specific, tailored actionable tips in Hebrew for the candidate to ace their next real interview as a "${roleName}".
 
 Strict JSON Output Schema (respond ONLY with valid JSON):
 {
@@ -249,13 +271,17 @@ Instructions:
   const prompt = `${systemDirective}\n\nתמלול הראיון המלא לתפקיד ${roleName}:\n-------------------------------------\n${formattedTranscript}\n-------------------------------------`;
 
   const models = [
-    'gemini-flash-latest',
-    'gemini-3-flash-preview',
     'gemini-3.1-flash-lite-preview',
-    'gemini-flash-lite-latest'
+    'gemini-flash-lite-latest',
+    'gemini-3-flash-preview',
+    'gemini-3.5-flash',
+    'gemini-flash-latest'
   ];
 
   for (const model of models) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12000);
+
     try {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -275,9 +301,12 @@ Instructions:
               temperature: 0.2,
               response_mime_type: 'application/json'
             }
-          })
+          }),
+          signal: controller.signal
         }
       );
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errText = await response.text();
@@ -301,6 +330,7 @@ Instructions:
         return parsed;
       }
     } catch (err) {
+      clearTimeout(timeoutId);
       console.warn(`Evaluation attempt failed on ${model}:`, err);
     }
   }

@@ -448,6 +448,15 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
 
           {/* Subtitles & Live Candidate Speech Strip at bottom of stage */}
           <div className="absolute inset-x-4 bottom-4 z-20 flex flex-col items-center gap-2">
+            {/* Listening Indicator when waiting for candidate to speak */}
+            {!interimTranscript && !isSpeaking && !isAiThinking && isSessionActive && isListening && (
+              <div className="max-w-md w-full px-4 py-2 rounded-full bg-[#0a1510]/90 border border-emerald-500/40 text-emerald-300 text-xs text-center backdrop-blur-md shadow-lg flex items-center justify-center gap-2 animate-in fade-in">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                <Mic className="w-3.5 h-3.5 text-emerald-400" />
+                <span>רותם מקשיבה לך... (דבר/י עכשיו אל המיקרופון)</span>
+              </div>
+            )}
+
             {/* Live Candidate Speech Banner */}
             {interimTranscript && (
               <div className="max-w-2xl w-full px-4 py-2.5 rounded-2xl bg-[#090f17]/95 border border-emerald-500/50 text-emerald-200 text-xs shadow-glow-card-mint flex items-center justify-between gap-3 animate-in fade-in">
@@ -459,13 +468,43 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
                 </div>
                 <button
                   onClick={submitCurrentSpeech}
-                  className="shrink-0 px-3 py-1 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-[11px] transition-all shadow-md flex items-center gap-1.5"
+                  className="shrink-0 px-3.5 py-1.5 rounded-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition-all shadow-md flex items-center gap-1.5 cursor-pointer active:scale-95"
                   title="שלח תשובה זו כעת"
                 >
                   <span>שלח תשובה</span>
                   <Send className="w-3 h-3" />
                 </button>
               </div>
+            )}
+
+            {/* Quick Text Response Input on Stage */}
+            {!isSpeaking && !isAiThinking && isSessionActive && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!textInput.trim()) return;
+                  handleCandidateResponse(textInput.trim());
+                  setTextInput('');
+                }}
+                className="max-w-xl w-full flex items-center gap-2 px-3 py-1.5 rounded-2xl bg-[#060809]/80 border border-white/10 backdrop-blur-md focus-within:border-mint-500/50 transition-all text-xs"
+              >
+                <input
+                  type="text"
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  placeholder="אפשר גם להקליד כאן תשובה וללחוץ Enter..."
+                  className="flex-1 bg-transparent text-slate-100 placeholder:text-slate-500 text-xs outline-none"
+                  dir="rtl"
+                />
+                <button
+                  type="submit"
+                  disabled={!textInput.trim()}
+                  className="px-3 py-1 rounded-xl bg-mint-500/20 text-mint-300 hover:bg-mint-500/30 disabled:opacity-30 disabled:cursor-not-allowed font-medium text-[11px] transition-colors flex items-center gap-1 shrink-0"
+                >
+                  <span>שלח</span>
+                  <Send className="w-3 h-3" />
+                </button>
+              </form>
             )}
 
             {/* AI Thinking Floating Banner */}
