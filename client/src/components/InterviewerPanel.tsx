@@ -81,22 +81,22 @@ export const InterviewerPanel: React.FC<InterviewerPanelProps> = ({
   const getStageBadge = (state: InterviewState) => {
     switch (state) {
       case 'GREETING':
-        return { label: 'Phase 1: Context & Strategy', color: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' };
+        return { label: 'שלב 1: הקשר ואסטרטגיה', color: 'bg-[#0b1614] text-[#2dd4bf] border-[#133d34]' };
       case 'PROBLEM_CLARIFICATION':
-        return { label: 'Phase 2: Clarification', color: 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30' };
+        return { label: 'שלב 2: הבהרת הבעיה', color: 'bg-[#091518] text-teal-300 border-[#14373e]' };
       case 'CODING':
-        return { label: 'Phase 3: Coding Sandbox', color: 'bg-amber-500/15 text-amber-300 border-amber-500/30' };
+        return { label: 'שלב 3: כתיבת קוד בארגז חול', color: 'bg-[#18150c] text-amber-300 border-[#3d3215]' };
       case 'REVIEW_AND_COMPLEXITY':
-        return { label: 'Phase 4: Complexity Review', color: 'bg-violet-500/15 text-violet-300 border-violet-500/30' };
+        return { label: 'שלב 4: סקירת סיבוכיות Big-O', color: 'bg-[#121820] text-sky-300 border-[#1f2d3d]' };
       case 'COMPLETED':
-        return { label: 'Phase 5: Problem Completed', color: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' };
+        return { label: 'שלב 5: הושלם בהצלחה', color: 'bg-[#0a1811] text-emerald-300 border-[#13442a]' };
     }
   };
 
   const stageBadge = getStageBadge(interviewState);
 
   return (
-    <div className="h-full flex flex-col bg-[#070b14] border-r border-cyan-500/20 backdrop-blur-xl select-none overflow-hidden">
+    <div className="h-full flex flex-col bg-[#060809] border-r border-[#141e22] select-none overflow-hidden">
       {/* 1. VISUAL INTERVIEWER AVATAR & HUD (Dominant top section) */}
       <div className="shrink-0">
         <InterviewerAvatar
@@ -109,27 +109,27 @@ export const InterviewerPanel: React.FC<InterviewerPanelProps> = ({
       </div>
 
       {/* 2. Stage & Transcript Toolbar */}
-      <div className="px-4 py-1.5 bg-[#090e1a] border-b border-cyan-500/15 flex items-center justify-between text-[11px] shrink-0">
-        <div className="flex items-center space-x-2 text-slate-400">
-          <Clock className="w-3 h-3 text-cyan-400" />
-          <span className={`px-2 py-0.2 rounded-full border text-[10px] font-semibold ${stageBadge.color}`}>
+      <div className="px-4 py-2 bg-[#080c0e] border-b border-[#141e22] flex items-center justify-between text-[11px] shrink-0" dir="rtl">
+        <div className="flex items-center space-x-2 space-x-reverse text-slate-400">
+          <Clock className="w-3 h-3 text-[#2dd4bf]" />
+          <span className={`px-2.5 py-0.5 rounded-full border text-[10px] font-semibold ${stageBadge.color}`}>
             {stageBadge.label}
           </span>
         </div>
 
         <button
           onClick={() => setIsHistoryCollapsed(prev => !prev)}
-          className="flex items-center space-x-1 text-slate-400 hover:text-cyan-300 transition-colors text-[10px] font-mono"
+          className="flex items-center space-x-1 space-x-reverse text-slate-400 hover:text-[#2dd4bf] transition-colors text-[10px]"
         >
-          <History className="w-3 h-3 text-cyan-400" />
-          <span>{isHistoryCollapsed ? 'Show History' : 'Hide History'}</span>
+          <History className="w-3 h-3 text-[#2dd4bf]" />
+          <span>{isHistoryCollapsed ? 'הצג היסטוריית שיחה' : 'הסתר היסטוריה'}</span>
           {isHistoryCollapsed ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
         </button>
       </div>
 
       {/* 3. Collapsible Conversation History Log */}
       {!isHistoryCollapsed && (
-        <div className="flex-1 overflow-y-auto p-4 space-y-3.5 select-text bg-[#070a12]/80">
+        <div className="flex-1 overflow-y-auto p-4 space-y-3.5 select-text bg-[#060809]/90">
           {messages.map(msg => (
             <div
               key={msg.id}
@@ -139,30 +139,32 @@ export const InterviewerPanel: React.FC<InterviewerPanelProps> = ({
             >
               {/* Avatar Icon */}
               <div
-                className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 text-xs shadow-md ${
+                className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-xs shadow-md ${
                   msg.sender === 'ai'
                     ? personaType === 'mentor'
-                      ? 'bg-gradient-to-tr from-cyan-600 via-indigo-600 to-violet-600 text-white shadow-cyan-500/20'
-                      : 'bg-gradient-to-tr from-violet-600 via-purple-600 to-indigo-700 text-white shadow-violet-500/20'
-                    : 'bg-[#1e2942] text-slate-200 border border-slate-700'
+                      ? 'bg-gradient-to-tr from-[#064e3b] via-[#059669] to-[#2dd4bf] text-white shadow-[0_0_12px_rgba(45,212,191,0.3)]'
+                      : 'bg-gradient-to-tr from-[#065f46] via-[#047857] to-[#10b981] text-white shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                    : 'bg-[#121c20] text-slate-200 border border-[#1b2b31]'
                 }`}
               >
-                {msg.sender === 'ai' ? <Sparkles className="w-3.5 h-3.5 text-cyan-200" /> : <User className="w-3.5 h-3.5 text-slate-300" />}
+                {msg.sender === 'ai' ? <Sparkles className="w-3.5 h-3.5 text-mint-200" /> : <User className="w-3.5 h-3.5 text-slate-300" />}
               </div>
 
               {/* Message Bubble */}
               <div
                 className={`max-w-[88%] rounded-2xl p-3 text-xs leading-relaxed ${
                   msg.sender === 'ai'
-                    ? 'bg-[#0e1424] border border-cyan-500/20 text-slate-200 rounded-tl-sm shadow-[0_2px_12px_rgba(0,0,0,0.3)]'
-                    : 'bg-gradient-to-r from-cyan-600 to-indigo-600 text-white rounded-tr-sm shadow-[0_2px_12px_rgba(6,182,212,0.25)]'
+                    ? 'bg-[#0a0f12] border border-[#162328] text-slate-200 rounded-tl-sm shadow-[0_2px_12px_rgba(0,0,0,0.3)] text-right'
+                    : 'bg-gradient-to-r from-[#10b981] to-[#0d9488] text-white rounded-tr-sm shadow-[0_2px_15px_rgba(16,185,129,0.25)] text-right font-medium'
                 }`}
+                dir="rtl"
               >
-                <div className="whitespace-pre-wrap">{msg.text}</div>
+                <div className="whitespace-pre-wrap leading-relaxed">{msg.text}</div>
                 <div
-                  className={`mt-1 text-[9px] text-right font-mono ${
-                    msg.sender === 'ai' ? 'text-slate-500' : 'text-cyan-200/70'
+                  className={`mt-1 text-[9px] text-left font-mono ${
+                    msg.sender === 'ai' ? 'text-slate-500' : 'text-emerald-100/70'
                   }`}
+                  dir="ltr"
                 >
                   {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
@@ -173,10 +175,10 @@ export const InterviewerPanel: React.FC<InterviewerPanelProps> = ({
           {/* Live Interim Speech Bubble */}
           {interimTranscript && (
             <div className="flex items-start space-x-2.5 flex-row-reverse space-x-reverse">
-              <div className="w-7 h-7 rounded-lg bg-rose-600/80 text-white flex items-center justify-center shrink-0">
+              <div className="w-7 h-7 rounded-full bg-rose-600/80 text-white flex items-center justify-center shrink-0">
                 <User className="w-3.5 h-3.5" />
               </div>
-              <div className="max-w-[85%] rounded-2xl p-2.5 text-xs leading-relaxed bg-rose-950/60 border border-rose-500/40 text-rose-200 italic rounded-tr-sm">
+              <div className="max-w-[85%] rounded-2xl p-2.5 text-xs leading-relaxed bg-[#1a0c0e] border border-rose-500/40 text-rose-200 italic rounded-tr-sm text-right" dir="rtl">
                 <span>{interimTranscript} ...</span>
               </div>
             </div>
@@ -185,12 +187,12 @@ export const InterviewerPanel: React.FC<InterviewerPanelProps> = ({
           {/* AI Thinking Animation */}
           {isAiThinking && (
             <div className="flex items-start space-x-2.5 animate-in fade-in duration-200">
-              <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-cyan-600 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-cyan-500/20">
-                <Sparkles className="w-3.5 h-3.5 animate-pulse text-cyan-200" />
+              <div className="w-7 h-7 rounded-full bg-gradient-to-tr from-[#064e3b] to-[#2dd4bf] text-[#022019] flex items-center justify-center shrink-0 shadow-md shadow-mint-500/20">
+                <Sparkles className="w-3.5 h-3.5 animate-pulse text-[#022019]" />
               </div>
-              <div className="rounded-2xl px-3.5 py-2.5 text-xs bg-[#0e1424] border border-cyan-500/30 text-cyan-200 flex items-center space-x-2 rounded-tl-sm shadow-md">
-                <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping shrink-0" />
-                <span className="italic">Thinking & analyzing problem...</span>
+              <div className="rounded-2xl px-3.5 py-2.5 text-xs bg-[#090e11] border border-[#1b2b31] text-mint-300 flex items-center space-x-2 space-x-reverse rounded-tl-sm shadow-md" dir="rtl">
+                <span className="w-2 h-2 rounded-full bg-[#2dd4bf] animate-ping shrink-0" />
+                <span className="italic">חושב/ת ומנתח/ת את הבעיה...</span>
               </div>
             </div>
           )}
@@ -199,51 +201,51 @@ export const InterviewerPanel: React.FC<InterviewerPanelProps> = ({
         </div>
       )}
 
-      {/* 4. Socratic Quick Action Chips */}
-      <div className="px-3 py-2 border-t border-cyan-500/15 bg-[#080c16] flex items-center space-x-2 overflow-x-auto text-[11px] shrink-0">
+      {/* 4. Socratic Quick Action Chips (ZeBeyond rounded pills) */}
+      <div className="px-3.5 py-2.5 border-t border-[#141e22] bg-[#070b0d] flex items-center space-x-2 space-x-reverse overflow-x-auto text-[11px] shrink-0" dir="rtl">
         <button
           onClick={onRequestHint}
-          title="Get a progressive Socratic hint without spoiling the answer"
-          className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 shrink-0 transition-all font-medium shadow-sm"
+          title="קבל רמז סוקרטי הדרגתי מבלי לקלקל את התשובה המלאה"
+          className="flex items-center space-x-1.5 space-x-reverse px-3 py-1.5 rounded-full bg-[#18150c] hover:bg-[#241f12] text-amber-300 border border-[#3d3215] shrink-0 transition-all font-medium shadow-sm"
         >
           <Lightbulb className="w-3 h-3 text-amber-400" />
-          <span>Ask for Hint ({hintIndex + 1}/{problem.hints.length})</span>
+          <span>בקש רמז ({hintIndex + 1}/{problem.hints.length})</span>
         </button>
 
         <button
-          onClick={() => onSendMessage("I'm thinking of using an optimal data structure to solve this.")}
-          className="px-2.5 py-1 rounded-lg bg-[#111625] hover:bg-[#161d30] text-slate-300 border border-slate-800 shrink-0 transition-colors"
+          onClick={() => onSendMessage("אני שוקל להשתמש במבנה נתונים אופטימלי כדי לפתור את הבעיה.")}
+          className="px-3 py-1.5 rounded-full bg-[#0c1214] hover:bg-[#121c20] text-slate-300 hover:text-white border border-[#1b282d] hover:border-[#2dd4bf]/40 shrink-0 transition-all"
         >
-          Propose Approach
+          הצע כיוון לפתרון
         </button>
 
         <button
-          onClick={() => onSendMessage("Can you clarify the input constraints and edge cases?")}
-          className="px-2.5 py-1 rounded-lg bg-[#111625] hover:bg-[#161d30] text-slate-300 border border-slate-800 shrink-0 transition-colors flex items-center space-x-1"
+          onClick={() => onSendMessage("תוכל לחדד לי את אילוצי הקלט ומקרי הקצה שיש לשים אליהם לב?")}
+          className="px-3 py-1.5 rounded-full bg-[#0c1214] hover:bg-[#121c20] text-slate-300 hover:text-white border border-[#1b282d] hover:border-[#2dd4bf]/40 shrink-0 transition-all flex items-center space-x-1 space-x-reverse"
         >
           <HelpCircle className="w-3 h-3 text-slate-400" />
-          <span>Clarify Edge Cases</span>
+          <span>הבהר מקרי קצה</span>
         </button>
 
         <button
-          onClick={() => onSendMessage(`The time complexity is ${problem.optimalTimeComplexity} and space complexity is ${problem.optimalSpaceComplexity}.`)}
-          className="px-2.5 py-1 rounded-lg bg-[#111625] hover:bg-[#161d30] text-slate-300 border border-slate-800 shrink-0 transition-colors"
+          onClick={() => onSendMessage(`סיבוכיות הזמן היא ${problem.optimalTimeComplexity} וסיבוכיות המקום היא ${problem.optimalSpaceComplexity}.`)}
+          className="px-3 py-1.5 rounded-full bg-[#0c1214] hover:bg-[#121c20] text-slate-300 hover:text-white border border-[#1b282d] hover:border-[#2dd4bf]/40 shrink-0 transition-all"
         >
-          Explain Complexity
+          הסבר סיבוכיות Big-O
         </button>
       </div>
 
       {/* 5. Voice & Text Input Bar */}
-      <div className="p-3 border-t border-cyan-500/20 bg-[#0a0f1c]/95 shrink-0">
+      <div className="p-3 border-t border-[#141e22] bg-[#080c0e]/95 shrink-0">
         <div className="flex items-center space-x-2">
           {/* Mic Toggle with Barge-in indicator */}
           <button
             onClick={onToggleListening}
-            title={isListening ? 'Stop listening' : 'Start speaking with interviewer'}
-            className={`p-2.5 rounded-xl border transition-all ${
+            title={isListening ? 'עצור האזנה קולית' : 'התחל שיחה קולית עם המראיין'}
+            className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all ${
               isListening
                 ? 'bg-rose-950/60 border-rose-500 text-rose-400 shadow-[0_0_15px_rgba(244,63,94,0.3)] animate-pulse'
-                : 'bg-[#111625] border-slate-800 text-slate-300 hover:text-white hover:border-cyan-500/40'
+                : 'bg-[#0b1012] border-[#1b282d] text-slate-300 hover:text-white hover:border-[#2dd4bf]/40'
             }`}
           >
             {isListening ? <Mic className="w-4 h-4 text-rose-400" /> : <MicOff className="w-4 h-4" />}
@@ -256,12 +258,13 @@ export const InterviewerPanel: React.FC<InterviewerPanelProps> = ({
               value={inputText}
               onChange={e => setInputText(e.target.value)}
               onKeyDown={handleKeyDown}
+              dir="rtl"
               placeholder={
                 isListening
-                  ? 'Continuous voice active (barge-in ready)... or type here'
-                  : 'Speak or type your solution strategy...'
+                  ? 'האזנה רציפה פעילה... דבר או הקלד כאן'
+                  : 'דבר או הקלד את אסטרטגיית הפתרון שלך בעברית...'
               }
-              className="w-full bg-[#080c16] border border-cyan-500/20 rounded-xl px-3.5 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 focus:border-cyan-500/50"
+              className="w-full bg-[#080d0f] border border-[#1b282d] rounded-full px-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-[#2dd4bf]/60 focus:ring-1 focus:ring-[#2dd4bf]/40 text-right transition-all"
             />
           </div>
 
@@ -269,7 +272,8 @@ export const InterviewerPanel: React.FC<InterviewerPanelProps> = ({
           <button
             onClick={handleSend}
             disabled={!inputText.trim()}
-            className="p-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 disabled:opacity-30 text-white transition-all shadow-[0_0_12px_rgba(6,182,212,0.25)]"
+            title="שלח הודעה"
+            className="w-10 h-10 rounded-full bg-gradient-to-r from-[#2dd4bf] to-[#10b981] hover:from-[#5eead4] hover:to-[#2ee59d] disabled:opacity-30 text-[#022019] font-bold transition-all shadow-[0_0_15px_rgba(45,212,191,0.35)] flex items-center justify-center shrink-0"
           >
             <Send className="w-4 h-4" />
           </button>

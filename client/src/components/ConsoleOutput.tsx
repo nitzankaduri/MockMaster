@@ -54,36 +54,37 @@ export const ConsoleOutput: React.FC<ConsoleOutputProps> = ({
 
   return (
     <div
-      className={`border-t border-cyan-500/20 bg-[#070a10] flex flex-col transition-all duration-200 select-none shadow-[0_-4px_20px_rgba(0,0,0,0.5)] ${
+      className={`border-t border-[#141e22] bg-[#060809] flex flex-col transition-all duration-200 shadow-[0_-6px_25px_rgba(0,0,0,0.6)] ${
         isExpanded ? 'h-80' : 'h-48'
       }`}
     >
       {/* Console Top Header & Tabs */}
-      <div className="h-9 px-3 border-b border-cyan-500/20 bg-[#0c111e]/90 flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center space-x-1.5 text-xs text-cyan-400 font-mono font-bold mr-2">
-            <Terminal className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-            <span>TERMINAL</span>
+      <div className="h-10 px-4 border-b border-[#141e22] bg-[#080c0e]/95 flex items-center justify-between select-none">
+        <div className="flex items-center space-x-2.5">
+          <div className="flex items-center space-x-1.5 text-xs text-[#2dd4bf] font-mono font-bold mr-2">
+            <Terminal className="w-3.5 h-3.5 text-[#2dd4bf] animate-pulse" />
+            <span>מסוף</span>
           </div>
 
-          {/* Tab Switchers */}
-          <div className="flex items-center space-x-1 bg-[#070a12] p-0.5 rounded-lg border border-slate-800">
+          {/* Tab Switchers (ZeBeyond pills) */}
+          <div className="flex items-center space-x-1 bg-[#0a0f12] p-0.5 rounded-full border border-[#162227]">
             <button
               onClick={() => setActiveTab('tests')}
-              className={`px-2.5 py-0.5 rounded-md text-xs font-semibold transition-all flex items-center space-x-1.5 ${
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center space-x-1.5 ${
                 activeTab === 'tests'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-gradient-to-r from-[#2dd4bf] to-[#10b981] text-[#022019] shadow-sm font-bold'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              <span>Test Suite</span>
+              <span>חבילת בדיקות</span>
               {testResults && (
                 <span
-                  className={`text-[10px] px-1 rounded-full ${
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                     allPassed
-                      ? 'bg-emerald-950 text-emerald-400 border border-emerald-800'
-                      : 'bg-rose-950 text-rose-400 border border-rose-800'
+                      ? 'bg-[#022019] text-mint-300'
+                      : 'bg-rose-950 text-rose-300'
                   }`}
+                  dir="ltr"
                 >
                   {passedCount}/{totalCount}
                 </span>
@@ -92,13 +93,13 @@ export const ConsoleOutput: React.FC<ConsoleOutputProps> = ({
 
             <button
               onClick={() => setActiveTab('raw')}
-              className={`px-2.5 py-0.5 rounded-md text-xs font-semibold transition-all flex items-center space-x-1.5 ${
+              className={`px-3 py-1 rounded-full text-xs font-semibold transition-all flex items-center space-x-1.5 ${
                 activeTab === 'raw'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-gradient-to-r from-[#2dd4bf] to-[#10b981] text-[#022019] shadow-sm font-bold'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              <span>Stdout / Stderr</span>
+              <span>פלט סטנדרטי (Stdout / Stderr)</span>
               {hasError && <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />}
             </button>
           </div>
@@ -107,35 +108,35 @@ export const ConsoleOutput: React.FC<ConsoleOutputProps> = ({
         {/* Execution Metrics & Expand Toggle */}
         <div className="flex items-center space-x-3 text-xs">
           {executionResult?.executionTime && (
-            <div className="flex items-center space-x-1 text-slate-400 font-mono text-[11px]">
-              <Clock className="w-3 h-3 text-cyan-400" />
+            <div className="flex items-center space-x-1 text-slate-400 font-mono text-[11px]" dir="ltr">
+              <Clock className="w-3 h-3 text-[#2dd4bf]" />
               <span className="text-slate-300">{executionResult.executionTime}</span>
             </div>
           )}
 
           {executionResult?.memory && (
-            <div className="hidden sm:flex items-center space-x-1 text-slate-400 font-mono text-[11px]">
-              <Cpu className="w-3 h-3 text-violet-400" />
+            <div className="hidden sm:flex items-center space-x-1 text-slate-400 font-mono text-[11px]" dir="ltr">
+              <Cpu className="w-3 h-3 text-emerald-400" />
               <span className="text-slate-300">{executionResult.memory}</span>
             </div>
           )}
 
           {executionResult && (
             <span
-              className={`px-1.5 py-0.5 rounded text-[10px] font-bold font-mono border ${
+              className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono border ${
                 executionResult.code === 0 && !executionResult.stderr
-                  ? 'bg-emerald-950/70 border-emerald-700 text-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.3)]'
-                  : 'bg-rose-950/70 border-rose-700 text-rose-300 shadow-[0_0_8px_rgba(244,63,94,0.3)]'
+                  ? 'bg-[#06241a] border-[#134433] text-mint-300'
+                  : 'bg-[#240b10] border-[#471922] text-rose-300'
               }`}
             >
-              {executionResult.code === 0 && !executionResult.stderr ? 'EXIT 0' : 'EXIT 1 (ERROR)'}
+              {executionResult.code === 0 && !executionResult.stderr ? 'EXIT 0' : 'EXIT 1 (שגיאה)'}
             </span>
           )}
 
           <button
             onClick={() => setIsExpanded(prev => !prev)}
-            title={isExpanded ? 'Collapse Terminal' : 'Expand Terminal'}
-            className="p-1 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+            title={isExpanded ? 'כווץ מסוף' : 'הרחב מסוף'}
+            className="w-7 h-7 rounded-full text-slate-400 hover:text-white hover:bg-[#121c20] transition-colors flex items-center justify-center"
           >
             {isExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
@@ -143,82 +144,82 @@ export const ConsoleOutput: React.FC<ConsoleOutputProps> = ({
       </div>
 
       {/* Main Console Content */}
-      <div className="flex-1 overflow-hidden p-3 font-mono text-xs select-text">
+      <div className="flex-1 overflow-hidden p-3.5 font-mono text-xs select-text bg-[#060809]">
         {isRunning || isSubmitting ? (
-          <div className="h-full flex items-center justify-center space-x-2.5 text-cyan-400 font-mono">
-            <div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-            <span className="animate-pulse">Executing code in remote sandbox...</span>
+          <div className="h-full flex items-center justify-center space-x-2.5 text-[#2dd4bf] font-sans">
+            <div className="w-4 h-4 border-2 border-[#2dd4bf] border-t-transparent rounded-full animate-spin" />
+            <span className="animate-pulse">מריץ קוד בסביבת ארגז חול מבודדת...</span>
           </div>
         ) : activeTab === 'tests' ? (
           /* Test Suite View */
           testResults && testResults.length > 0 ? (
-            <div className="h-full flex flex-col space-y-2">
+            <div className="h-full flex flex-col space-y-2.5">
               {/* Test Case Selectors */}
-              <div className="flex items-center space-x-1.5 border-b border-slate-800 pb-2 overflow-x-auto">
+              <div className="flex items-center space-x-1.5 border-b border-[#141e22] pb-2 overflow-x-auto">
                 {testResults.map((tc, idx) => (
                   <button
                     key={idx}
                     onClick={() => setSelectedCaseIndex(idx)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center space-x-1.5 shrink-0 transition-all ${
+                    className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center space-x-1.5 shrink-0 transition-all ${
                       selectedCaseIndex === idx
-                        ? 'bg-[#151d33] text-cyan-300 border border-cyan-500/40 shadow-sm'
-                        : 'bg-[#0c111e] text-slate-400 hover:text-slate-200 border border-slate-800'
+                        ? 'bg-[#0f1b1e] text-[#2dd4bf] border border-[#2dd4bf]/40 shadow-sm'
+                        : 'bg-[#0a0f11] text-slate-400 hover:text-white border border-[#162328]'
                     }`}
                   >
                     {tc.passed ? (
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <CheckCircle2 className="w-3.5 h-3.5 text-mint-400" />
                     ) : (
                       <XCircle className="w-3.5 h-3.5 text-rose-400" />
                     )}
-                    <span>Case {idx + 1}</span>
+                    <span>מקרה {idx + 1}</span>
                   </button>
                 ))}
               </div>
 
-              {/* Selected Test Case Detail */}
+              {/* Selected Test Case Detail Cards */}
               {testResults[selectedCaseIndex] && (
-                <div className="flex-1 overflow-y-auto space-y-2 pr-2">
+                <div className="flex-1 overflow-y-auto space-y-2.5 pr-2">
                   <div className="flex items-center justify-between">
                     <span className="text-[11px] uppercase tracking-wider text-slate-400 font-bold font-mono">
-                      Test Case #{selectedCaseIndex + 1}
+                      מקרה בדיקה #{selectedCaseIndex + 1}
                     </span>
                     <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
                         testResults[selectedCaseIndex].passed
-                          ? 'bg-emerald-950 text-emerald-300 border-emerald-700 shadow-[0_0_8px_rgba(16,185,129,0.3)]'
-                          : 'bg-rose-950 text-rose-300 border-rose-700 shadow-[0_0_8px_rgba(244,63,94,0.3)]'
+                          ? 'bg-[#06241a] text-mint-300 border-[#134433]'
+                          : 'bg-[#240b10] text-rose-300 border-[#471922]'
                       }`}
                     >
-                      {testResults[selectedCaseIndex].passed ? 'PASSED' : 'FAILED'}
+                      {testResults[selectedCaseIndex].passed ? 'עבר בהצלחה' : 'נכשל'}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                    <div className="bg-[#0b101c] p-2 rounded-lg border border-slate-800">
-                      <div className="text-[10px] text-slate-500 font-semibold mb-1">INPUT</div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                    <div className="bg-[#090e11] p-3 rounded-2xl border border-[#162328]">
+                      <div className="text-[10px] text-slate-500 font-semibold mb-1">קלט (INPUT)</div>
                       <div className="text-slate-200 break-all">{testResults[selectedCaseIndex].input}</div>
                     </div>
 
-                    <div className="bg-[#0b101c] p-2 rounded-lg border border-slate-800">
-                      <div className="text-[10px] text-slate-500 font-semibold mb-1">EXPECTED OUTPUT</div>
-                      <div className="text-emerald-400 break-all">{testResults[selectedCaseIndex].expected}</div>
+                    <div className="bg-[#090e11] p-3 rounded-2xl border border-[#162328]">
+                      <div className="text-[10px] text-slate-500 font-semibold mb-1">פלט צפוי (EXPECTED)</div>
+                      <div className="text-mint-400 break-all">{testResults[selectedCaseIndex].expected}</div>
                     </div>
 
-                    <div className="bg-[#0b101c] p-2 rounded-lg border border-slate-800">
-                      <div className="text-[10px] text-slate-500 font-semibold mb-1">ACTUAL OUTPUT</div>
+                    <div className="bg-[#090e11] p-3 rounded-2xl border border-[#162328]">
+                      <div className="text-[10px] text-slate-500 font-semibold mb-1">פלט שהתקבל (ACTUAL)</div>
                       <div
                         className={`break-all ${
-                          testResults[selectedCaseIndex].passed ? 'text-emerald-400' : 'text-rose-400 font-bold'
+                          testResults[selectedCaseIndex].passed ? 'text-mint-400' : 'text-rose-400 font-bold'
                         }`}
                       >
-                        {testResults[selectedCaseIndex].actual || 'No output'}
+                        {testResults[selectedCaseIndex].actual || 'אין פלט'}
                       </div>
                     </div>
                   </div>
 
                   {testResults[selectedCaseIndex].error && (
-                    <div className="bg-rose-950/40 border border-rose-800/80 p-2.5 rounded-lg text-rose-300 text-xs">
-                      <div className="font-semibold text-rose-400 mb-0.5">Traceback:</div>
+                    <div className="bg-[#1c0c10] border border-[#3d1820] p-3 rounded-2xl text-rose-300 text-xs">
+                      <div className="font-semibold text-rose-400 mb-0.5">שגיאת ריצה (Traceback):</div>
                       <div>{testResults[selectedCaseIndex].error}</div>
                     </div>
                   )}
@@ -226,21 +227,21 @@ export const ConsoleOutput: React.FC<ConsoleOutputProps> = ({
               )}
             </div>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-1">
+            <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-1 font-sans">
               <Code className="w-5 h-5 text-slate-600" />
-              <p>No test suite execution recorded yet. Click "Submit" to run the full test suite.</p>
+              <p>טרם נרשמה הרצה של חבילת הבדיקות. לחץ על "הגש פתרון" כדי להריץ את כל הבדיקות.</p>
             </div>
           )
         ) : (
           /* Raw Standard Output / Traceback View */
-          <div className="h-full overflow-y-auto space-y-2 pr-2">
+          <div className="h-full overflow-y-auto space-y-2.5 pr-2">
             {executionResult ? (
               <>
                 {executionResult.stderr && (
-                  <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-800/80 text-rose-300 space-y-1">
+                  <div className="p-3 rounded-2xl bg-[#1c0c10] border border-[#3d1820] text-rose-300 space-y-1">
                     <div className="flex items-center space-x-1.5 text-rose-400 font-semibold text-xs">
                       <AlertCircle className="w-3.5 h-3.5" />
-                      <span>Runtime Error Traceback:</span>
+                      <span>שגיאת ריצה (Runtime Error):</span>
                     </div>
                     <pre className="whitespace-pre-wrap text-xs text-rose-200/90 font-mono">
                       {executionResult.stderr}
@@ -250,21 +251,21 @@ export const ConsoleOutput: React.FC<ConsoleOutputProps> = ({
 
                 {executionResult.stdout ? (
                   <div>
-                    <div className="text-[10px] text-slate-500 font-semibold mb-1">STANDARD OUTPUT (STDOUT):</div>
-                    <pre className="whitespace-pre-wrap text-slate-200 bg-[#0b101c] p-2.5 rounded-lg border border-slate-800/80 font-mono">
+                    <div className="text-[10px] text-slate-500 font-semibold mb-1">פלט סטנדרטי (STDOUT):</div>
+                    <pre className="whitespace-pre-wrap text-slate-200 bg-[#090e11] p-3 rounded-2xl border border-[#162328] font-mono">
                       {executionResult.stdout}
                     </pre>
                   </div>
                 ) : (
                   !executionResult.stderr && (
-                    <div className="text-slate-500 italic">Code executed with exit code 0 (no output printed).</div>
+                    <div className="text-slate-500 italic">הקוד רץ בהצלחה עם exit code 0 (לא הודפס פלט).</div>
                   )
                 )}
               </>
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-1">
+              <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-1 font-sans">
                 <Terminal className="w-5 h-5 text-slate-600" />
-                <p>Click "Run Code" to execute sample input and inspect stdout.</p>
+                <p>לחץ על "הרץ קוד" כדי לבדוק קלט לדוגמה ולצפות בפלט.</p>
               </div>
             )}
           </div>

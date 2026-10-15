@@ -35,70 +35,72 @@ export const InterviewerAvatar: React.FC<InterviewerAvatarProps> = ({
   const getMoodBadge = (m: InterviewMood) => {
     switch (m) {
       case 'Attentive':
-        return 'bg-cyan-950/70 text-cyan-300 border-cyan-500/40';
+        return { label: 'קשוב/ה', color: 'bg-[#091512] text-[#2dd4bf] border-[#133c32]' };
       case 'Evaluating Strategy':
-        return 'bg-amber-950/70 text-amber-300 border-amber-500/40';
+        return { label: 'מעריך/ה אסטרטגיה', color: 'bg-[#18150c] text-amber-300 border-[#3d3215]' };
       case 'Probing Trade-offs':
-        return 'bg-violet-950/70 text-violet-300 border-violet-500/40';
+        return { label: 'בוחן/ת Trade-offs', color: 'bg-[#140e1a] text-purple-300 border-[#331c47]' };
       case 'Analyzing Traceback':
-        return 'bg-rose-950/70 text-rose-300 border-rose-500/40';
+        return { label: 'מנתח/ת שגיאת ריצה', color: 'bg-[#1a0c0e] text-rose-300 border-[#47171d]' };
       case 'Complexity Review':
-        return 'bg-indigo-950/70 text-indigo-300 border-indigo-500/40';
+        return { label: 'סקירת סיבוכיות', color: 'bg-[#0c141d] text-sky-300 border-[#152e47]' };
       case 'Impressed':
-        return 'bg-emerald-950/70 text-emerald-300 border-emerald-500/40';
+        return { label: 'מתרשם/ת לטובה', color: 'bg-[#091a13] text-[#34d399] border-[#104e33]' };
     }
   };
+
+  const moodBadge = getMoodBadge(mood);
 
   const getStatusLabel = () => {
     if (personaType === 'mentor') {
       if (visualState === 'THINKING') {
-        return { label: 'Thinking...', color: 'text-violet-400 bg-violet-950 border-violet-500/50' };
+        return { label: 'חושבת...', color: 'text-mint-300 bg-mint-950/80 border-mint-500/40' };
       }
-      return { label: 'Chat Only', color: 'text-cyan-300 bg-cyan-950/80 border-cyan-500/40' };
+      return { label: 'צ\'אט טקסט', color: 'text-slate-300 bg-[#0c1214] border-[#1a2529]' };
     }
     switch (visualState) {
       case 'SPEAKING':
-        return { label: 'Speaking', color: 'text-cyan-400 bg-cyan-950 border-cyan-500/50' };
+        return { label: 'מדבר...', color: 'text-[#2dd4bf] bg-[#091714] border-[#2dd4bf]/40 shadow-[0_0_12px_rgba(45,212,191,0.25)]' };
       case 'LISTENING':
-        return { label: 'Listening...', color: 'text-rose-400 bg-rose-950 border-rose-500/50' };
+        return { label: 'מקשיב...', color: 'text-rose-400 bg-rose-950/60 border-rose-500/40 animate-pulse' };
       case 'THINKING':
-        return { label: 'Evaluating...', color: 'text-violet-400 bg-violet-950 border-violet-500/50' };
+        return { label: 'מעריך...', color: 'text-mint-300 bg-mint-950/80 border-mint-500/40' };
       case 'IDLE':
       default:
-        return { label: 'Active', color: 'text-slate-400 bg-slate-900 border-slate-700' };
+        return { label: 'פעיל', color: 'text-slate-400 bg-[#0c1214] border-[#1a2529]' };
     }
   };
 
   const statusLabel = getStatusLabel();
 
   return (
-    <div className="flex flex-col bg-gradient-to-b from-[#0c111e] via-[#090d18] to-[#080c16] border-b border-cyan-500/20 p-4 relative select-none">
+    <div className="flex flex-col bg-gradient-to-b from-[#090d0f] via-[#070a0c] to-[#060809] border-b border-[#141e22] p-4 relative select-none">
       {/* Top HUD: Seniority & Persona Switcher */}
       <div className="flex items-center justify-between mb-3 z-20">
-        {/* Persona Dropdown */}
+        {/* Persona Dropdown Pill */}
         <div className="relative">
           <button
             onClick={() => setIsDropdownOpen(prev => !prev)}
-            className="flex items-center space-x-2 px-2.5 py-1 rounded-xl bg-[#111728] hover:bg-[#161f36] border border-cyan-500/30 text-xs text-slate-200 transition-all shadow-sm"
+            className="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-[#0d1416]/90 hover:bg-[#121c20] border border-[#1b282d] hover:border-[#2dd4bf]/40 text-xs text-slate-200 transition-all shadow-sm"
           >
             {personaType === 'mentor' ? (
-              <HeartHandshake className="w-3.5 h-3.5 text-cyan-400" />
+              <HeartHandshake className="w-3.5 h-3.5 text-[#2dd4bf]" />
             ) : (
-              <ShieldAlert className="w-3.5 h-3.5 text-violet-400" />
+              <ShieldAlert className="w-3.5 h-3.5 text-[#34d399]" />
             )}
-            <span className="font-bold tracking-wide font-mono text-[11px] text-slate-100">
+            <span className="font-bold tracking-wide font-sans text-xs text-slate-100">
               {activePersona.name}
             </span>
             <span className="text-[10px] text-slate-400 hidden sm:inline">
-              ({personaType === 'mentor' ? 'Mentor • Chat Only' : 'Bar Raiser • Voice'})
+              ({personaType === 'mentor' ? 'מנטורית • צ\'אט' : 'Bar Raiser • קול'})
             </span>
             <ChevronDown className="w-3 h-3 text-slate-400" />
           </button>
 
           {isDropdownOpen && (
-            <div className="absolute left-0 mt-1.5 w-72 rounded-xl bg-[#0e1424] border border-cyan-500/40 shadow-[0_0_25px_rgba(6,182,212,0.25)] py-2 z-50">
-              <div className="px-3 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
-                Select Interviewer Persona
+            <div className="absolute left-0 mt-2 w-72 rounded-2xl bg-[#090e10]/95 backdrop-blur-2xl border border-[#1c2c31] shadow-[0_12px_40px_rgba(0,0,0,0.7)] py-2.5 z-50 text-right" dir="rtl">
+              <div className="px-3.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">
+                בחר דמות מראיין/ת
               </div>
 
               {(Object.keys(PERSONAS) as PersonaType[]).map(key => {
@@ -111,23 +113,23 @@ export const InterviewerAvatar: React.FC<InterviewerAvatarProps> = ({
                       onSelectPersona(p.id);
                       setIsDropdownOpen(false);
                     }}
-                    className={`w-full px-3 py-2 text-left flex items-start space-x-2.5 transition-colors ${
+                    className={`w-full px-3.5 py-2.5 text-right flex items-start space-x-2.5 space-x-reverse transition-colors ${
                       isSelected
-                        ? 'bg-cyan-500/15 border-l-2 border-cyan-400 text-slate-100'
-                        : 'hover:bg-[#151c30] text-slate-300'
+                        ? 'bg-[#10231e] border-r-2 border-[#2dd4bf] text-white'
+                        : 'hover:bg-[#0e171a] text-slate-300'
                     }`}
                   >
                     <div className="mt-0.5">
                       {p.id === 'mentor' ? (
-                        <HeartHandshake className="w-4 h-4 text-cyan-400" />
+                        <HeartHandshake className="w-4 h-4 text-[#2dd4bf]" />
                       ) : (
-                        <ShieldAlert className="w-4 h-4 text-violet-400" />
+                        <ShieldAlert className="w-4 h-4 text-[#34d399]" />
                       )}
                     </div>
                     <div className="space-y-0.5">
-                      <div className="flex items-center space-x-1.5">
+                      <div className="flex items-center space-x-1.5 space-x-reverse">
                         <span className="font-bold text-xs">{p.name}</span>
-                        <span className="text-[9px] px-1 py-0.2 rounded bg-slate-800 text-slate-300 font-mono">
+                        <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-[#131e22] text-[#2dd4bf] font-mono border border-[#1f3036]">
                           {p.seniority}
                         </span>
                       </div>
@@ -142,17 +144,15 @@ export const InterviewerAvatar: React.FC<InterviewerAvatarProps> = ({
           )}
         </div>
 
-        {/* Mood Indicator Badge */}
+        {/* Mood & Status Indicators */}
         <div className="flex items-center space-x-2">
           <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-semibold font-mono border ${getMoodBadge(
-              mood
-            )}`}
+            className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${moodBadge.color}`}
           >
-            {mood}
+            {moodBadge.label}
           </span>
           <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono border flex items-center space-x-1 ${statusLabel.color}`}
+            className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border flex items-center space-x-1 ${statusLabel.color}`}
           >
             {visualState === 'SPEAKING' && <Radio className="w-2.5 h-2.5 animate-spin" />}
             {visualState === 'LISTENING' && (
@@ -163,10 +163,10 @@ export const InterviewerAvatar: React.FC<InterviewerAvatarProps> = ({
         </div>
       </div>
 
-      {/* Stylized High-Tech Visual Hologram Avatar */}
+      {/* Hologram Avatar Orb & Radar Rings (ZeBeyond emerald theme) */}
       <div className="relative flex flex-col items-center justify-center py-2">
         <div className="relative w-28 h-28 flex items-center justify-center">
-          {/* Animated Ambient Holographic Rings */}
+          {/* Animated Ambient Radar Rings */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 120 120">
             {/* Outer dotted orbital ring */}
             <circle
@@ -176,25 +176,23 @@ export const InterviewerAvatar: React.FC<InterviewerAvatarProps> = ({
               fill="none"
               stroke={
                 visualState === 'SPEAKING'
-                  ? 'rgba(6, 182, 212, 0.6)'
+                  ? 'rgba(45, 212, 191, 0.7)'
                   : visualState === 'LISTENING'
-                  ? 'rgba(244, 63, 94, 0.6)'
+                  ? 'rgba(244, 63, 94, 0.7)'
                   : visualState === 'THINKING'
-                  ? 'rgba(139, 92, 246, 0.8)'
-                  : 'rgba(51, 65, 85, 0.4)'
+                  ? 'rgba(16, 185, 129, 0.8)'
+                  : 'rgba(34, 48, 54, 0.5)'
               }
               strokeWidth="1.5"
               strokeDasharray="4 6"
               className={
-                visualState === 'THINKING'
-                  ? 'animate-spin-slow'
-                  : visualState === 'SPEAKING'
+                visualState === 'THINKING' || visualState === 'SPEAKING'
                   ? 'animate-spin-slow'
                   : ''
               }
             />
 
-            {/* Middle Rotating Radar Arcs */}
+            {/* Middle Rotating Geometric Arcs */}
             <circle
               cx="60"
               cy="60"
@@ -202,12 +200,12 @@ export const InterviewerAvatar: React.FC<InterviewerAvatarProps> = ({
               fill="none"
               stroke={
                 visualState === 'SPEAKING'
-                  ? 'rgba(6, 182, 212, 0.8)'
+                  ? 'rgba(45, 212, 191, 0.9)'
                   : visualState === 'LISTENING'
-                  ? 'rgba(244, 63, 94, 0.7)'
+                  ? 'rgba(244, 63, 94, 0.8)'
                   : visualState === 'THINKING'
-                  ? 'rgba(168, 85, 247, 0.9)'
-                  : 'rgba(71, 85, 105, 0.3)'
+                  ? 'rgba(16, 185, 129, 0.9)'
+                  : 'rgba(45, 212, 191, 0.25)'
               }
               strokeWidth="2"
               strokeDasharray={
@@ -227,19 +225,19 @@ export const InterviewerAvatar: React.FC<InterviewerAvatarProps> = ({
             />
           </svg>
 
-          {/* Hologram Core Glow */}
+          {/* Hologram Core Orb */}
           <div
             className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-300 z-10 ${
               visualState === 'SPEAKING'
-                ? 'bg-gradient-to-tr from-cyan-600 via-indigo-600 to-violet-600 shadow-[0_0_35px_rgba(6,182,212,0.6)] scale-105 ring-2 ring-cyan-400'
+                ? 'bg-gradient-to-tr from-[#064e3b] via-[#059669] to-[#2dd4bf] shadow-[0_0_35px_rgba(45,212,191,0.6)] scale-105 ring-2 ring-[#2dd4bf]'
                 : visualState === 'LISTENING'
-                ? 'bg-gradient-to-tr from-rose-600 via-purple-600 to-indigo-600 shadow-[0_0_35px_rgba(244,63,94,0.6)] ring-2 ring-rose-400'
+                ? 'bg-gradient-to-tr from-rose-900 via-rose-700 to-rose-500 shadow-[0_0_35px_rgba(244,63,94,0.6)] ring-2 ring-rose-400'
                 : visualState === 'THINKING'
-                ? 'bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-600 shadow-[0_0_30px_rgba(139,92,246,0.6)] ring-2 ring-violet-400 animate-pulse'
-                : 'bg-gradient-to-tr from-slate-800 to-slate-900 border border-slate-700 shadow-md'
+                ? 'bg-gradient-to-tr from-[#064e3b] via-[#10b981] to-[#2dd4bf] shadow-[0_0_30px_rgba(16,185,129,0.5)] ring-2 ring-[#10b981] animate-pulse'
+                : 'bg-gradient-to-tr from-[#0a1215] to-[#121c20] border border-[#1c2c31] shadow-md'
             }`}
           >
-            {/* Visualizer Wave Inside Core */}
+            {/* Visualizer Sound Waves Inside Core */}
             <div className="flex items-center space-x-1">
               {[0.1, 0.4, 0.7, 0.2, 0.6].map((delay, idx) => (
                 <div
@@ -250,8 +248,8 @@ export const InterviewerAvatar: React.FC<InterviewerAvatarProps> = ({
                       : visualState === 'LISTENING'
                       ? 'bg-rose-200 animate-pulse'
                       : visualState === 'THINKING'
-                      ? 'bg-violet-200 animate-ping'
-                      : 'bg-slate-500 h-2'
+                      ? 'bg-mint-200 animate-ping'
+                      : 'bg-slate-600 h-2'
                   }`}
                   style={{
                     animationDelay: `${delay}s`,
@@ -264,12 +262,12 @@ export const InterviewerAvatar: React.FC<InterviewerAvatarProps> = ({
         </div>
 
         {/* Persona Identity Plate */}
-        <div className="text-center mt-2 space-y-0.5">
+        <div className="text-center mt-2.5 space-y-0.5">
           <div className="flex items-center justify-center space-x-1.5">
-            <h2 className="text-xs font-bold text-slate-100 font-mono tracking-wider">
+            <h2 className="text-sm font-bold text-white tracking-wide">
               {activePersona.name}
             </h2>
-            <Sparkles className="w-3 h-3 text-cyan-400" />
+            <Sparkles className="w-3.5 h-3.5 text-[#2dd4bf]" />
           </div>
           <p className="text-[11px] text-slate-400">
             {activePersona.title} • <span className="text-slate-500">{activePersona.company}</span>
@@ -277,24 +275,24 @@ export const InterviewerAvatar: React.FC<InterviewerAvatarProps> = ({
         </div>
       </div>
 
-      {/* Live Subtitles HUD Banner */}
-      <div className="mt-2 min-h-[52px] rounded-xl bg-[#060913]/90 border border-cyan-500/25 p-2.5 flex items-start space-x-2 shadow-[inset_0_1px_6px_rgba(0,0,0,0.6)]">
-        <Quote className="w-3.5 h-3.5 text-cyan-400 shrink-0 mt-0.5 opacity-80" />
-        <div className="flex-1 text-[11px] leading-relaxed select-text font-sans">
+      {/* Live Subtitles HUD Card */}
+      <div className="mt-2 min-h-[50px] rounded-2xl bg-[#090e11]/80 backdrop-blur-md border border-[#162227] p-3 flex items-start space-x-2.5 shadow-inner">
+        <Quote className="w-3.5 h-3.5 text-[#2dd4bf] shrink-0 mt-0.5 opacity-80" />
+        <div className="flex-1 text-[11px] leading-relaxed select-text font-sans text-right" dir="rtl">
           {currentCaption ? (
-            <p className="text-cyan-200 animate-in fade-in duration-150">
+            <p className="text-mint-300 animate-in fade-in duration-150">
               {currentCaption}
             </p>
           ) : visualState === 'LISTENING' ? (
-            <p className="text-rose-300 italic font-mono text-[10px]">
-              Listening to candidate voice input... (Barge-in active)
+            <p className="text-rose-300 italic text-[10px]">
+              מקשיב/ה לתשובת המועמד/ת בקול... (האזנה רציפה פעילה)
             </p>
           ) : visualState === 'THINKING' ? (
-            <p className="text-violet-300 italic font-mono text-[10px]">
-              Analyzing algorithm and testing execution traces...
+            <p className="text-mint-400 italic text-[10px]">
+              מנתח/ת את האלגוריתם ובודק/ת עקבות הרצה...
             </p>
           ) : (
-            <p className="text-slate-500 italic text-[11px]">
+            <p className="text-slate-400 italic text-[11px]">
               {activePersona.styleDescription}
             </p>
           )}

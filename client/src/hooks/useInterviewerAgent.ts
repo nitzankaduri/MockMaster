@@ -134,8 +134,8 @@ export function useInterviewerAgent({
         setIsAiThinking(false);
         const fallback =
           personaType === 'mentor'
-            ? `Hi! I'm Sarah Chen, Staff Engineer at MockMaster. Great to meet you! Today we will look at **${problem.title}** (${problem.difficulty} — ${problem.category}). Take a look at the description on the right. How are you thinking of approaching this?`
-            : `Hello, I am Marcus Vance. Today's problem is **${problem.title}**. Before writing code, describe your algorithmic approach and runtime expectations.`;
+            ? `שלום! אני שרה חן, מהנדסת תוכנה בכירה ב-MockMaster. נעים מאוד להכיר! היום נעבוד יחד על **${problem.title}** (${problem.difficulty} — ${problem.category}). עיין בתיאור הבעיה משמאל. כיצד אתה חושב לגשת לפתרון?`
+            : `שלום, שמי מרקוס ואנס, ארכיטקט מערכות ראשי. אתגר הראיון היום הוא **${problem.title}**. לפני כתיבת קוד, תאר את הגישה האלגוריתמית שלך ואת ציפיות זמן הריצה.`;
         setCurrentCaption(fallback);
         addMessage('ai', fallback, true);
         playAudioCueRef.current?.('start');
@@ -192,7 +192,7 @@ export function useInterviewerAgent({
         setIsAiThinking(false);
         addMessage(
           'ai',
-          `I heard your point about "${text}". Let's consider how we can break this down: what would be the simplest brute force approach here?`,
+          `שמעתי את הנקודה שהעלית: "${text}". בוא נחשוב כיצד נוכל לפרק את הבעיה: מה תהיה גישת הכוח הגס (Brute-force) הפשוטה ביותר כאן?`,
           true
         );
       }
@@ -206,7 +206,7 @@ export function useInterviewerAgent({
     const currentLevel = (hintIndex % problem.hints.length) + 1;
     setHintIndex(prev => prev + 1);
 
-    const hintPrompt = `I could use a hint (Level ${currentLevel} of ${problem.hints.length}) on how to approach "${problem.title}". Can you give me a subtle clue without giving away the full answer?`;
+    const hintPrompt = `אשמח לרמז (רמה ${currentLevel} מתוך ${problem.hints.length}) לגבי דרך הפתרון של "${problem.title}". תוכל לתת לי רמז מנחה סוקרטי מבלי לגלות את הפתרון המלא?`;
 
     // Add user hint request
     const userMsg: Message = {
@@ -237,7 +237,7 @@ export function useInterviewerAgent({
     } catch {
       setIsAiThinking(false);
       const rawHint = problem.hints[hintIndex % problem.hints.length];
-      addMessage('ai', `Here's a clue: ${rawHint}`, true, currentLevel);
+      addMessage('ai', `הנה רמז מכוון עבורך: ${rawHint}`, true, currentLevel);
     }
   }, [addMessage, hintIndex, problem, personaType, language]);
 
@@ -285,10 +285,10 @@ export function useInterviewerAgent({
         console.error('Failed to analyze execution result with Gemini:', err);
         setIsAiThinking(false);
         if (execResult.stderr) {
-          addMessage('ai', `I noticed a runtime error in your code: \`${execResult.stderr.slice(0, 100)}\`. Let's check where that happened.`, true);
+          addMessage('ai', `שמתי לב לשגיאת ריצה בקוד שלך: \`${execResult.stderr.slice(0, 100)}\`. בוא נבדוק היכן בדיוק זה קרה.`, true);
         } else if (testResults) {
           const passed = testResults.filter(t => t.passed).length;
-          addMessage('ai', `You passed ${passed}/${testResults.length} test cases. Review the failing case on the right to see what edge condition was missed.`, true);
+          addMessage('ai', `עברת ${passed}/${testResults.length} מקרי בדיקה. בדוק את המקרה שנכשל בלשונית הבדיקות כדי לראות איזה תנאי קצה פוספס.`, true);
         }
       }
     },

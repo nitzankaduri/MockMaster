@@ -86,80 +86,80 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({
   const passPercent = totalCount > 0 ? Math.round((passedCount / totalCount) * 100) : 0;
 
   return (
-    <div className="h-full flex flex-col bg-[#070a10] overflow-hidden select-none">
-      {/* Top Multi-Tab Header Bar */}
-      <div className="h-11 px-3 border-b border-cyan-500/20 bg-[#0c111e]/90 flex items-center justify-between">
-        {/* Navigation Tabs: Editor, Problem Specs, Custom Tests, Metrics */}
-        <div className="flex items-center space-x-1">
-          <div className="flex items-center space-x-1 bg-[#070a12] p-0.5 rounded-xl border border-cyan-500/20">
+    <div className="h-full flex flex-col bg-[#060809] overflow-hidden">
+      {/* Top Multi-Tab Header Bar (ZeBeyond sleek pill navbar) */}
+      <div className="h-12 px-4 border-b border-[#141e22] bg-[#070b0d]/90 backdrop-blur-xl flex items-center justify-between select-none" dir="rtl">
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-[#0a0f12] p-1 rounded-full border border-[#162227] shadow-[0_2px_10px_rgba(0,0,0,0.5)]">
             <button
               onClick={() => setActiveSandboxTab('editor')}
-              className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all duration-200 ${
                 activeSandboxTab === 'editor'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-gradient-to-r from-[#2dd4bf] to-[#10b981] text-[#022019] shadow-[0_0_15px_rgba(45,212,191,0.35)]'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              <Code className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Editor</span>
+              <Code className="w-3.5 h-3.5" />
+              <span>עורך קוד</span>
             </button>
 
             <button
               onClick={() => setActiveSandboxTab('specs')}
-              className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all duration-200 ${
                 activeSandboxTab === 'specs'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-gradient-to-r from-[#2dd4bf] to-[#10b981] text-[#022019] shadow-[0_0_15px_rgba(45,212,191,0.35)]'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              <FileText className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Problem Specs</span>
+              <FileText className="w-3.5 h-3.5" />
+              <span>מפרט הבעיה</span>
             </button>
 
             <button
               onClick={() => setActiveSandboxTab('testcases')}
-              className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all duration-200 ${
                 activeSandboxTab === 'testcases'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-gradient-to-r from-[#2dd4bf] to-[#10b981] text-[#022019] shadow-[0_0_15px_rgba(45,212,191,0.35)]'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              <Sliders className="w-3.5 h-3.5 text-amber-400" />
-              <span>Test Cases</span>
+              <Sliders className="w-3.5 h-3.5" />
+              <span>מקרי בדיקה</span>
               {customTestCases.length > 0 && (
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#022019]" />
               )}
             </button>
 
             <button
               onClick={() => setActiveSandboxTab('metrics')}
-              className={`flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all duration-200 ${
                 activeSandboxTab === 'metrics'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.2)]'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-gradient-to-r from-[#2dd4bf] to-[#10b981] text-[#022019] shadow-[0_0_15px_rgba(45,212,191,0.35)]'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              <BarChart3 className="w-3.5 h-3.5 text-violet-400" />
-              <span>Performance</span>
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>ביצועים וסיבוכיות</span>
               {testResults && (
-                <span className={`text-[10px] px-1 rounded-full ${passPercent === 100 ? 'bg-emerald-950 text-emerald-400' : 'bg-rose-950 text-rose-400'}`}>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${passPercent === 100 ? 'bg-[#064e3b] text-mint-300' : 'bg-rose-950 text-rose-300'}`}>
                   {passPercent}%
                 </span>
               )}
             </button>
           </div>
 
-          <div className="h-4 w-[1px] bg-slate-800 hidden lg:block mx-1" />
+          <div className="h-4 w-[1px] bg-[#1a2529] hidden lg:block mx-0.5" />
 
           {/* Language Switcher */}
-          <div className="hidden sm:flex items-center space-x-1 bg-[#070a12] p-0.5 rounded-lg border border-slate-800">
+          <div className="hidden sm:flex items-center gap-1 bg-[#0a0f12] p-0.5 rounded-full border border-[#162227]" dir="ltr">
             {LANGUAGES.map(lang => (
               <button
                 key={lang.id}
                 onClick={() => onLanguageChange(lang.id)}
-                className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-all ${
+                className={`px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all ${
                   language === lang.id
-                    ? 'bg-[#151c30] text-cyan-300 border border-cyan-500/30'
+                    ? 'bg-[#121c20] text-[#2dd4bf] border border-[#1d2d33]'
                     : 'text-slate-500 hover:text-slate-300'
                 }`}
               >
@@ -170,69 +170,76 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({
         </div>
 
         {/* Action Buttons: Copy, Reset, Run, Submit */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-2" dir="ltr">
+          {/* Submit Button (ZeBeyond vibrant primary hero pill) */}
           <button
-            onClick={handleCopy}
-            title="Copy Code"
-            className="p-1.5 rounded-lg bg-[#111625] hover:bg-[#161f36] border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors text-xs"
+            onClick={onSubmitCode}
+            disabled={isRunning || isSubmitting}
+            className="px-4 py-1.5 rounded-full bg-gradient-to-r from-[#2dd4bf] to-[#10b981] hover:from-[#5eead4] hover:to-[#2ee59d] text-[#022019] font-bold text-xs flex items-center gap-1.5 shadow-[0_0_20px_rgba(45,212,191,0.35)] transition-all disabled:opacity-40"
           >
-            {copied ? <CheckCheck className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+            {isSubmitting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#022019]" />
+            ) : (
+              <Check className="w-3.5 h-3.5 text-[#022019]" />
+            )}
+            <span>{isSubmitting ? 'מעריך...' : 'הגש פתרון'}</span>
           </button>
+
+          {/* Run Code Button (ZeBeyond sleek secondary pill) */}
+          <button
+            onClick={onRunCode}
+            disabled={isRunning || isSubmitting}
+            className="px-3.5 py-1.5 rounded-full bg-[#0c1214] hover:bg-[#131d21] border border-[#1a2529] hover:border-[#2dd4bf]/40 text-slate-200 font-semibold text-xs flex items-center gap-1.5 transition-all disabled:opacity-40 shadow-sm"
+          >
+            {isRunning ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin text-[#2dd4bf]" />
+            ) : (
+              <Play className="w-3.5 h-3.5 text-[#2dd4bf] fill-[#2dd4bf]" />
+            )}
+            <span>{isRunning ? 'מריץ קוד...' : 'הרץ קוד'}</span>
+          </button>
+
+          <div className="h-4 w-[1px] bg-[#1a2529]" />
 
           <button
             onClick={onResetCode}
-            title="Reset Starter Code"
-            className="p-1.5 rounded-lg bg-[#111625] hover:bg-[#161f36] border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors text-xs"
+            title="אפס קוד התחלתי לתבנית המקורית"
+            className="w-8 h-8 rounded-full bg-[#0c1214] hover:bg-[#121b1f] border border-[#1a2529] text-slate-400 hover:text-white transition-colors flex items-center justify-center text-xs"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
 
-          <div className="h-4 w-[1px] bg-slate-800" />
-
-          {/* Run Code Button */}
           <button
-            onClick={onRunCode}
-            disabled={isRunning || isSubmitting}
-            className="px-3 py-1.5 rounded-xl bg-[#131b2e] hover:bg-[#1a253f] border border-cyan-500/30 text-cyan-300 font-semibold text-xs flex items-center space-x-1.5 transition-all disabled:opacity-40 shadow-[0_0_10px_rgba(6,182,212,0.15)]"
+            onClick={handleCopy}
+            title="העתק קוד ללוח"
+            className="w-8 h-8 rounded-full bg-[#0c1214] hover:bg-[#121b1f] border border-[#1a2529] text-slate-400 hover:text-white transition-colors flex items-center justify-center text-xs"
           >
-            {isRunning ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-cyan-400" />
-            ) : (
-              <Play className="w-3.5 h-3.5 text-cyan-400 fill-cyan-400" />
-            )}
-            <span>{isRunning ? 'Running...' : 'Run Code'}</span>
-          </button>
-
-          {/* Submit Button */}
-          <button
-            onClick={onSubmitCode}
-            disabled={isRunning || isSubmitting}
-            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-xs flex items-center space-x-1.5 shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all disabled:opacity-40"
-          >
-            {isSubmitting ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-white" />
-            ) : (
-              <Check className="w-3.5 h-3.5 text-white" />
-            )}
-            <span>{isSubmitting ? 'Evaluating...' : 'Submit'}</span>
+            {copied ? <CheckCheck className="w-3.5 h-3.5 text-[#2dd4bf]" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
         </div>
       </div>
 
       {/* Main Drawer Content Based on Active Tab */}
-      <div className="flex-1 w-full relative overflow-hidden">
+      <div className="flex-1 w-full relative overflow-hidden bg-[#060809]">
         {/* Tab 1: Monaco Code Editor */}
         {activeSandboxTab === 'editor' && (
-          <div className="h-full w-full relative">
+          <div
+            className="h-full w-full relative select-text"
+            dir="ltr"
+            style={{ direction: 'ltr', textAlign: 'left' }}
+          >
             <Editor
               height="100%"
               language={activeLangConfig.monacoId}
               value={code}
               onChange={(val) => onCodeChange(val || '')}
               theme="vs-dark"
+              onMount={(editor) => {
+                editor.layout();
+              }}
               options={{
                 fontSize: 13.5,
-                fontFamily: "'Fira Code', 'Cascadia Code', Consolas, monospace",
+                fontFamily: "'JetBrains Mono', 'Fira Code', Consolas, monospace",
                 fontLigatures: true,
                 tabSize: 4,
                 minimap: { enabled: false },
@@ -244,12 +251,14 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({
                 cursorBlinking: 'smooth',
                 cursorSmoothCaretAnimation: 'on',
                 smoothScrolling: true,
-                suggestOnTriggerCharacters: true
+                suggestOnTriggerCharacters: true,
+                readOnly: false,
+                domReadOnly: false
               }}
               loading={
-                <div className="h-full flex items-center justify-center text-slate-500 text-xs space-x-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-cyan-500" />
-                  <span>Loading Monaco Sandbox...</span>
+                <div className="h-full flex items-center justify-center text-slate-500 text-xs space-x-2" dir="rtl">
+                  <Loader2 className="w-4 h-4 animate-spin text-[#2dd4bf]" />
+                  <span>טוען את סביבת מונקו...</span>
                 </div>
               }
             />
@@ -258,43 +267,44 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({
 
         {/* Tab 2: Problem Specs */}
         {activeSandboxTab === 'specs' && (
-          <div className="h-full w-full bg-[#080c16]">
-            <ProblemDescription problem={problem} />
+          <div className="h-full w-full bg-[#060809]">
+            <ProblemDescription key={problem.id} problem={problem} />
           </div>
         )}
 
-        {/* Tab 3: Custom Test Cases Drawer */}
+        {/* Tab 3: Custom Test Cases Drawer (ZeBeyond modular card aesthetic) */}
         {activeSandboxTab === 'testcases' && (
-          <div className="h-full w-full overflow-y-auto p-4 space-y-4 bg-[#080c16] text-xs">
-            <div className="flex items-center justify-between border-b border-cyan-500/20 pb-3">
+          <div className="h-full w-full overflow-y-auto p-5 space-y-4 bg-[#060809] text-xs" dir="rtl">
+            <div className="flex items-center justify-between border-b border-[#141e22] pb-3">
               <div>
-                <h3 className="font-bold text-slate-100 uppercase tracking-wider font-mono">
-                  Test Case Configuration
+                <h3 className="font-bold text-white uppercase tracking-wider font-sans text-sm">
+                  הגדרת מקרי בדיקה (Test Cases)
                 </h3>
-                <p className="text-slate-400 text-[11px]">
-                  Add custom test arguments or inspect predefined test cases.
+                <p className="text-slate-400 text-[11px] mt-0.5">
+                  הוסף ארגומנטים מותאמים אישית או בחן מקרי בדיקה מוגדרים מראש.
                 </p>
               </div>
             </div>
 
-            {/* Predefined Test Cases */}
+            {/* Predefined Test Cases Grid */}
             <div className="space-y-2">
               <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                Predefined Test Suite ({problem.testCases.length})
+                חבילת בדיקות מוגדרת מראש ({problem.testCases.length})
               </span>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {problem.testCases.map((tc, idx) => (
                   <div
                     key={idx}
-                    className="p-3 rounded-xl bg-[#0c111e] border border-slate-800 space-y-1.5 font-mono text-xs"
+                    className="p-3.5 rounded-2xl bg-[#090e11] border border-[#162328] hover:border-[#2dd4bf]/30 transition-all space-y-1.5 font-mono text-xs text-left"
+                    dir="ltr"
                   >
-                    <div className="text-cyan-400 font-semibold text-[11px]">Case {idx + 1}</div>
+                    <div className="text-[#2dd4bf] font-semibold text-[11px]">מקרה {idx + 1}</div>
                     <div className="text-slate-300">
-                      <span className="text-slate-500">Input: </span>
+                      <span className="text-slate-500">קלט: </span>
                       {tc.input}
                     </div>
-                    <div className="text-emerald-300">
-                      <span className="text-slate-500">Expected: </span>
+                    <div className="text-mint-400">
+                      <span className="text-slate-500">פלט צפוי: </span>
                       {tc.expected}
                     </div>
                   </div>
@@ -303,30 +313,31 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({
             </div>
 
             {/* Custom Test Cases Added by Candidate */}
-            <div className="space-y-2 pt-2 border-t border-cyan-500/15">
-              <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">
-                Custom Test Cases ({customTestCases.length})
+            <div className="space-y-2 pt-2 border-t border-[#141e22]">
+              <span className="text-[11px] font-bold text-[#2dd4bf] uppercase tracking-wider">
+                מקרי בדיקה מותאמים אישית ({customTestCases.length})
               </span>
 
               {customTestCases.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {customTestCases.map(ctc => (
                     <div
                       key={ctc.id}
-                      className="p-3 rounded-xl bg-[#0e1424] border border-cyan-500/30 space-y-1.5 font-mono text-xs relative group"
+                      className="p-3.5 rounded-2xl bg-[#0a1013] border border-[#1c2c31] space-y-1.5 font-mono text-xs relative group text-left"
+                      dir="ltr"
                     >
                       <button
                         onClick={() => onRemoveCustomTestCase(ctc.id)}
-                        className="absolute right-2.5 top-2.5 text-slate-500 hover:text-rose-400 transition-colors"
-                        title="Delete custom test case"
+                        className="absolute right-3 top-3 text-slate-500 hover:text-rose-400 transition-colors"
+                        title="מחק מקרה בדיקה מותאם אישית"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
-                      <div className="text-cyan-300 font-semibold text-[11px]">Custom Input</div>
+                      <div className="text-[#2dd4bf] font-semibold text-[11px]">קלט מותאם אישית</div>
                       <div className="text-slate-200">{ctc.input}</div>
                       {ctc.expected && (
-                        <div className="text-emerald-300">
-                          <span className="text-slate-500">Expected: </span>
+                        <div className="text-mint-400">
+                          <span className="text-slate-500">פלט צפוי: </span>
                           {ctc.expected}
                         </div>
                       )}
@@ -334,146 +345,146 @@ export const CodeSandbox: React.FC<CodeSandboxProps> = ({
                   ))}
                 </div>
               ) : (
-                <div className="p-3 rounded-xl bg-[#0c111e] border border-dashed border-slate-800 text-slate-500 text-center text-xs">
-                  No custom test cases added yet. Add one below!
+                <div className="p-4 rounded-2xl bg-[#090e11] border border-dashed border-[#162328] text-slate-500 text-center text-xs">
+                  טרם נוספו מקרי בדיקה מותאמים אישית. הוסף מקרה חדש למטה!
                 </div>
               )}
             </div>
 
             {/* Add New Custom Case Input Form */}
-            <div className="p-3.5 rounded-xl bg-[#0e1322] border border-cyan-500/25 space-y-2.5">
-              <div className="text-[11px] font-bold text-slate-200 uppercase tracking-wider flex items-center space-x-1.5">
-                <Plus className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Add Custom Test Argument</span>
+            <div className="p-4 rounded-2xl bg-[#090e11] border border-[#162328] space-y-3">
+              <div className="text-[11px] font-bold text-slate-200 uppercase tracking-wider flex items-center space-x-1.5 space-x-reverse">
+                <Plus className="w-3.5 h-3.5 text-[#2dd4bf]" />
+                <span>הוסף ארגומנט בדיקה מותאם אישית</span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5" dir="ltr">
                 <input
                   type="text"
                   value={newCaseInput}
                   onChange={e => setNewCaseInput(e.target.value)}
-                  placeholder={`Input (e.g. ${problem.examples[0]?.input || 'test input'})`}
-                  className="bg-[#070a12] border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-400 font-mono"
+                  placeholder={`קלט (לדוגמה: ${problem.examples[0]?.input || 'test input'})`}
+                  className="bg-[#06090a] border border-[#1a2529] rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-[#2dd4bf] font-mono"
                 />
                 <input
                   type="text"
                   value={newCaseExpected}
                   onChange={e => setNewCaseExpected(e.target.value)}
-                  placeholder="Expected output (optional)"
-                  className="bg-[#070a12] border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-cyan-400 font-mono"
+                  placeholder="פלט צפוי (אופציונלי)"
+                  className="bg-[#06090a] border border-[#1a2529] rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-[#2dd4bf] font-mono"
                 />
               </div>
 
               <button
                 onClick={handleAddCase}
                 disabled={!newCaseInput.trim()}
-                className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white font-semibold text-xs flex items-center space-x-1 transition-all"
+                className="px-4 py-2 rounded-full bg-gradient-to-r from-[#2dd4bf] to-[#10b981] hover:from-[#5eead4] hover:to-[#2ee59d] disabled:opacity-30 text-[#022019] font-bold text-xs flex items-center space-x-1.5 space-x-reverse transition-all shadow-[0_0_15px_rgba(45,212,191,0.25)]"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Add to Test Suite</span>
+                <span>הוסף למערך הבדיקות</span>
               </button>
             </div>
           </div>
         )}
 
-        {/* Tab 4: Performance & AI Metrics Drawer */}
+        {/* Tab 4: Performance & AI Metrics Drawer (ZeBeyond high-tech diagnostics) */}
         {activeSandboxTab === 'metrics' && (
-          <div className="h-full w-full overflow-y-auto p-4 space-y-4 bg-[#080c16] text-xs">
-            <div className="border-b border-cyan-500/20 pb-3">
-              <h3 className="font-bold text-slate-100 uppercase tracking-wider font-mono flex items-center space-x-2">
-                <Gauge className="w-4 h-4 text-cyan-400" />
-                <span>Performance & Complexity Diagnostics</span>
+          <div className="h-full w-full overflow-y-auto p-5 space-y-4 bg-[#060809] text-xs" dir="rtl">
+            <div className="border-b border-[#141e22] pb-3">
+              <h3 className="font-bold text-white uppercase tracking-wider font-sans text-sm flex items-center space-x-2 space-x-reverse">
+                <Gauge className="w-4 h-4 text-[#2dd4bf]" />
+                <span>אבחון ביצועים וסיבוכיות (Big-O)</span>
               </h3>
-              <p className="text-slate-400 text-[11px]">
-                Real-time execution analytics and Big-O efficiency analysis.
+              <p className="text-slate-400 text-[11px] mt-0.5">
+                ניתוח בזמן אמת של מהירות ריצה, צריכת זיכרון ויעילות אלגוריתמית.
               </p>
             </div>
 
-            {/* Metrics Dashboard Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* Metrics Dashboard 3 Cards (matching ZeBeyond bottom card series) */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
               {/* Execution Duration */}
-              <div className="p-3.5 rounded-xl bg-[#0c111e] border border-cyan-500/20 space-y-1.5">
-                <div className="flex items-center space-x-1.5 text-slate-400 text-[11px] font-semibold uppercase font-mono">
+              <div className="p-4 rounded-2xl bg-[#090e11] border border-[#162328] hover:border-[#2dd4bf]/40 transition-all space-y-2">
+                <div className="flex items-center space-x-1.5 space-x-reverse text-slate-400 text-[11px] font-semibold uppercase font-sans">
                   <Zap className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Execution Speed</span>
+                  <span>מהירות ריצה</span>
                 </div>
-                <div className="text-xl font-mono font-bold text-cyan-300">
+                <div className="text-2xl font-mono font-bold text-[#2dd4bf]" dir="ltr">
                   {executionResult?.executionTime || '0 ms'}
                 </div>
                 <div className="text-[10px] text-slate-500">
-                  Remote Sandbox Execution
+                  הרצה בסביבת ארגז חול מבודדת
                 </div>
               </div>
 
               {/* Memory Estimate */}
-              <div className="p-3.5 rounded-xl bg-[#0c111e] border border-cyan-500/20 space-y-1.5">
-                <div className="flex items-center space-x-1.5 text-slate-400 text-[11px] font-semibold uppercase font-mono">
-                  <Cpu className="w-3.5 h-3.5 text-violet-400" />
-                  <span>Memory Allocated</span>
+              <div className="p-4 rounded-2xl bg-[#090e11] border border-[#162328] hover:border-[#2dd4bf]/40 transition-all space-y-2">
+                <div className="flex items-center space-x-1.5 space-x-reverse text-slate-400 text-[11px] font-semibold uppercase font-sans">
+                  <Cpu className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>זיכרון מוקצה</span>
                 </div>
-                <div className="text-xl font-mono font-bold text-violet-300">
+                <div className="text-2xl font-mono font-bold text-slate-200" dir="ltr">
                   {executionResult?.memory || '3,420 KB'}
                 </div>
                 <div className="text-[10px] text-slate-500">
-                  Heap & Runtime overhead
+                  תקורת זיכרון Heap וזמן ריצה
                 </div>
               </div>
 
               {/* Test Suite Pass Rate */}
-              <div className="p-3.5 rounded-xl bg-[#0c111e] border border-cyan-500/20 space-y-1.5">
-                <div className="flex items-center space-x-1.5 text-slate-400 text-[11px] font-semibold uppercase font-mono">
-                  <BarChart3 className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Test Pass Rate</span>
+              <div className="p-4 rounded-2xl bg-[#090e11] border border-[#162328] hover:border-[#2dd4bf]/40 transition-all space-y-2">
+                <div className="flex items-center space-x-1.5 space-x-reverse text-slate-400 text-[11px] font-semibold uppercase font-sans">
+                  <BarChart3 className="w-3.5 h-3.5 text-mint-400" />
+                  <span>אחוז מעבר בדיקות</span>
                 </div>
-                <div className="text-xl font-mono font-bold text-emerald-300">
+                <div className="text-2xl font-mono font-bold text-mint-400" dir="ltr">
                   {totalCount > 0 ? `${passPercent}%` : 'N/A'}
                 </div>
                 <div className="text-[10px] text-slate-500">
-                  {totalCount > 0 ? `${passedCount}/${totalCount} cases passed` : 'Run submit to evaluate'}
+                  {totalCount > 0 ? `${passedCount}/${totalCount} בדיקות עברו בהצלחה` : 'הגש פתרון לקבלת הערכה'}
                 </div>
               </div>
             </div>
 
             {/* Complexity Benchmark Card */}
-            <div className="p-4 rounded-xl bg-[#0e1322] border border-cyan-500/25 space-y-3">
-              <div className="font-bold text-slate-200 uppercase tracking-wider font-mono text-xs">
-                Big-O Complexity Evaluation
+            <div className="p-4.5 rounded-2xl bg-[#090e11] border border-[#162328] space-y-3">
+              <div className="font-bold text-white uppercase tracking-wider font-sans text-xs">
+                הערכת סיבוכיות Big-O
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="p-3 rounded-lg bg-[#080c16] border border-slate-800 space-y-1">
-                  <div className="text-[11px] text-slate-400 font-semibold font-mono">TARGET TIME COMPLEXITY</div>
-                  <div className="text-sm font-bold text-emerald-400 font-mono">
+                <div className="p-3.5 rounded-xl bg-[#06090a] border border-[#162227] space-y-1">
+                  <div className="text-[11px] text-slate-400 font-semibold font-mono">יעד סיבוכיות זמן</div>
+                  <div className="text-base font-bold text-[#2dd4bf] font-mono" dir="ltr">
                     {problem.optimalTimeComplexity}
                   </div>
-                  <div className="text-[11px] text-slate-400">
-                    Single pass / optimal search boundary
+                  <div className="text-[11px] text-slate-500">
+                    מעבר יחיד / גבול חיפוש אופטימלי
                   </div>
                 </div>
 
-                <div className="p-3 rounded-lg bg-[#080c16] border border-slate-800 space-y-1">
-                  <div className="text-[11px] text-slate-400 font-semibold font-mono">TARGET SPACE COMPLEXITY</div>
-                  <div className="text-sm font-bold text-indigo-400 font-mono">
+                <div className="p-3.5 rounded-xl bg-[#06090a] border border-[#162227] space-y-1">
+                  <div className="text-[11px] text-slate-400 font-semibold font-mono">יעד סיבוכיות זיכרון</div>
+                  <div className="text-base font-bold text-emerald-400 font-mono" dir="ltr">
                     {problem.optimalSpaceComplexity}
                   </div>
-                  <div className="text-[11px] text-slate-400">
-                    Auxiliary memory footprint
+                  <div className="text-[11px] text-slate-500">
+                    טביעת רגל של זיכרון עזר מוקצה
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* AI Interviewer Socratic Summary */}
-            <div className="p-3.5 rounded-xl bg-gradient-to-r from-cyan-950/40 via-[#0e1322] to-violet-950/40 border border-cyan-500/30 space-y-1.5">
-              <div className="text-cyan-300 font-bold text-xs uppercase tracking-wider font-mono">
-                AI Interviewer Verdict
+            {/* AI Interviewer Socratic Summary (with subtle emerald gradient glow) */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-[#064e3b]/30 via-[#091518] to-[#06241b]/20 border border-[#133d32] space-y-1.5 shadow-[0_4px_25px_rgba(6,78,59,0.15)]">
+              <div className="text-[#2dd4bf] font-bold text-xs uppercase tracking-wider font-mono">
+                הערכת ה-AI המראיין / AI Interviewer Verdict
               </div>
-              <p className="text-slate-300 text-xs leading-relaxed">
+              <p className="text-slate-200 text-xs leading-relaxed">
                 {passPercent === 100
-                  ? `Your solution is fully verified against all ${totalCount} test cases! When ready, discuss your Big-O time and space trade-offs with the interviewer agent.`
+                  ? `הפתרון שלך אומת בהצלחה כנגד כל ${totalCount} מקרי הבדיקה! כעת, שוחח עם המראיין בצ'אט ונתח את ה-Trade-offs של סיבוכיות הזמן והמקום.`
                   : totalCount > 0
-                  ? `Your solution resolved ${passedCount} out of ${totalCount} test cases. Review the failing edge cases in the Console Output below.`
-                  : `Click "Submit" in the top bar to run the full test suite and generate a detailed algorithmic verdict.`}
+                  ? `הפתרון עבר ${passedCount} מתוך ${totalCount} מקרי בדיקה. בחן את מקרה הקצה שנכשל בלשונית המסוף למטה.`
+                  : `לחץ על "הגש פתרון" בסרגל העליון כדי להריץ את חבילת הבדיקות המלאה ולקבל הערכה מפורטת.`}
               </p>
             </div>
           </div>

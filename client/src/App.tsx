@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { Header } from './components/Header';
 import type { AppMode } from './components/Header';
 import { InterviewerPanel } from './components/InterviewerPanel';
@@ -24,7 +24,11 @@ export default function App() {
   const [activeMode, setActiveMode] = useState<AppMode>('coding_sandbox');
 
   // Active problem & language selection
-  const [currentProblem, setCurrentProblem] = useState<CodingProblem>(PROBLEMS[0]);
+  const [selectedProblemId, setSelectedProblemId] = useState<string>(PROBLEMS[0].id);
+  const currentProblem = useMemo(
+    () => PROBLEMS.find(p => p.id === selectedProblemId) || PROBLEMS[0],
+    [selectedProblemId]
+  );
   const [language, setLanguage] = useState<SupportedLanguage>('python');
   const [code, setCode] = useState<string>(PROBLEMS[0].starterCode.python);
   const [customTestCases, setCustomTestCases] = useState<CustomTestCase[]>([]);
@@ -96,7 +100,7 @@ export default function App() {
   // When problem or language changes, update the editor code
   const handleSelectProblem = useCallback(
     (problem: CodingProblem) => {
-      setCurrentProblem(problem);
+      setSelectedProblemId(problem.id);
       setCode(problem.starterCode[language] || problem.starterCode.python);
       setExecutionResult(null);
       setTestResults(null);
@@ -169,7 +173,7 @@ export default function App() {
     } catch (err: any) {
       const errorResult: ExecutionResult = {
         stdout: '',
-        stderr: err.message || 'Execution failed to connect to execution engine.',
+        stderr: err.message || 'שגיאה בחיבור למנוע הרצת הקוד.',
         code: 1,
         executionTime: '0ms'
       };
@@ -220,7 +224,7 @@ export default function App() {
     } catch (err: any) {
       const errorResult: ExecutionResult = {
         stdout: '',
-        stderr: err.message || 'Submission failed.',
+        stderr: err.message || 'הגשת הפתרון נכשלה.',
         code: 1,
         executionTime: '0ms'
       };
@@ -252,7 +256,7 @@ export default function App() {
     : 'IDLE';
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-[#070a10] text-slate-100 overflow-hidden font-sans">
+    <div className="h-screen w-screen flex flex-col bg-[#060809] text-slate-100 overflow-hidden font-sans">
       {/* Top Application Header */}
       <Header
         currentProblem={currentProblem}
@@ -299,7 +303,7 @@ export default function App() {
           </div>
 
           {/* Right Side: Monaco Multi-Tab Sandbox + Terminal Console */}
-          <div className="flex-1 h-1/2 md:h-full flex flex-col overflow-hidden bg-[#070a10] border-t md:border-t-0 md:border-l border-cyan-500/20">
+          <div className="flex-1 h-1/2 md:h-full flex flex-col overflow-hidden bg-[#060809] border-t md:border-t-0 md:border-l border-white/5">
             <div className="flex-1 overflow-hidden">
               <CodeSandbox
                 problem={currentProblem}

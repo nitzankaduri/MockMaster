@@ -7,30 +7,45 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+        mono: ['"JetBrains Mono"', '"Fira Code"', 'Consolas', 'monospace'],
+      },
       colors: {
-        cyber: {
-          950: '#070a10',
-          900: '#0a0d14',
-          850: '#0e1320',
-          800: '#141b2d',
-          750: '#192238',
-          700: '#1e2942',
-          600: '#2b3a5c',
+        obsidian: {
+          950: '#060809',
+          900: '#080c0e',
+          850: '#0b1012',
+          800: '#0f1518',
+          750: '#141d21',
+          700: '#1b272c',
+          600: '#25353c',
+          500: '#344750',
+        },
+        mint: {
+          300: '#5eead4',
+          400: '#2dd4bf',
+          500: '#2ee59d',
+          600: '#10b981',
+          700: '#059669',
+          800: '#047857',
+          900: '#064e3b',
+          950: '#022c22',
         }
       },
       boxShadow: {
-        'glow-cyan': '0 0 15px rgba(6, 182, 212, 0.25)',
-        'glow-cyan-lg': '0 0 25px rgba(6, 182, 212, 0.4)',
-        'glow-violet': '0 0 15px rgba(139, 92, 246, 0.25)',
-        'glow-emerald': '0 0 15px rgba(16, 185, 129, 0.25)',
-        'glow-rose': '0 0 15px rgba(244, 63, 94, 0.25)',
-        'glow-orb': '0 0 40px rgba(6, 182, 212, 0.35)',
+        'glow-mint': '0 0 20px rgba(45, 212, 191, 0.35)',
+        'glow-mint-lg': '0 0 35px rgba(45, 212, 191, 0.55)',
+        'glow-emerald': '0 0 20px rgba(16, 185, 129, 0.35)',
+        'glow-emerald-lg': '0 0 35px rgba(16, 185, 129, 0.55)',
+        'glow-card': '0 4px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+        'glow-card-mint': '0 8px 30px rgba(16, 185, 129, 0.12), inset 0 1px 0 rgba(45, 212, 191, 0.2)',
       },
       animation: {
-        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'pulse-slow': 'pulse 3.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
         'sound-wave': 'soundWave 1.2s ease-in-out infinite alternate',
-        'spin-slow': 'spin 12s linear infinite',
-        'spin-reverse-slow': 'spinReverse 16s linear infinite',
+        'spin-slow': 'spin 14s linear infinite',
+        'spin-reverse-slow': 'spinReverse 18s linear infinite',
         'orb-breathe': 'orbBreathe 4s ease-in-out infinite alternate',
       },
       keyframes: {

@@ -1,9 +1,9 @@
 /**
- * Gemini-Powered Intelligent LeetCode Coding Interviewer & Mentor Service
- * Acts like ChatGPT/Claude as an empathetic, Socratic, technical interview guide.
+ * Gemini-Powered Intelligent LeetCode Coding Interviewer & Mentor Service (Hebrew Tech Edition)
+ * Acts as an empathetic, Socratic, technical interview guide speaking exclusively in fluent Hebrew.
  *
  * It reads:
- * 1. The exact LeetCode problem (Title, Category, Constraints, Examples, Hints, Complexities)
+ * 1. The exact LeetCode problem (Title, Category, Constraints, Examples, Hints, Complexities in Hebrew)
  * 2. The candidate's live code in the Monaco Editor & selected language
  * 3. The full conversation history
  * 4. Runtime errors, test case results, and tracebacks
@@ -28,58 +28,61 @@ export interface LeetCodeAgentOutput {
   nextState?: InterviewState;
 }
 
-const PRIMARY_MODEL = 'gemini-3-flash-preview';
-const FALLBACK_MODEL = 'gemini-3.1-flash-lite-preview';
+const PRIMARY_MODEL = 'gemini-2.5-flash';
+const FALLBACK_MODEL = 'gemini-1.5-flash';
 
 /**
- * Builds the system instructions for the AI Interviewer persona.
+ * Builds the system instructions for the AI Interviewer persona in Hebrew.
  */
 function buildSystemInstruction(persona: PersonaType, problem: CodingProblem): string {
   const personaBio =
     persona === 'mentor'
-      ? `You are Sarah Chen, Staff Software Engineer at MockMaster. You are a warm, encouraging, and highly skilled mentor conducting a technical coding interview. Your goal is to guide the candidate socratically, help them think through algorithms, empathize when they find it hard, and guide them step-by-step toward the optimal solution without simply dumping the complete answer at once.`
-      : `You are Marcus Vance, Principal Engineer and Bar Raiser at MockMaster. You are sharp, analytical, rigorous, and direct. You care deeply about edge cases, time/space complexity trade-offs, and clean invariants. While formal and demanding, you are professional and constructive.`;
+      ? `את שרה חן (Sarah Chen), מהנדסת תוכנה בכירה (Staff Software Engineer) בצוות הליבה של MockMaster.
+את מראיינת טכנית מנוסה ומנטורית ישראלית מובילה בהייטק. הסגנון שלך: חם, אמפתי, מעודד, סוקרטי ובגובה העיניים.
+המטרה שלך היא להנחות את המועמד/ת, לפתח את האינטואיציה האלגוריתמית שלהם, להרגיע כשהם מרגישים שקשה, ולפרק את הבעיה צעד-אחר-צעד מבלי לפלוט את הפתרון המלא בבת אחת.`
+      : `אתה מרקוס ואנס (Marcus Vance), ארכיטקט מערכות ראשי (Principal Systems Architect) ו-Bar Raiser בחברות Tier-1 / FAANG.
+אתה חד, ישיר, פורמלי, אנליטי ודורש מצוינות ללא פשרות. מעניין אותך ניתוח מעמיק של מקרי קצה, הוכחות סיבוכיות זמן ומקום (Big-O), וכתיבת קוד יעיל ותקין תחת לחץ. אתה מדבר בעברית עניינית, חדה ומקצועית.`;
 
   return `${personaBio}
 
-CURRENT LEETCODE PROBLEM CONTEXT:
-- Problem: "${problem.title}" (${problem.difficulty} - Category: ${problem.category})
-- Acceptance Rate: ${problem.acceptanceRate}
-- Target Time Complexity: ${problem.optimalTimeComplexity}
-- Target Space Complexity: ${problem.optimalSpaceComplexity}
-- Description:
+חוקי שפה מחייבים (CRITICAL LANGUAGE MANDATE):
+1. עליך לתקשר **אך ורק בעברית שוטפת, טבעית ומקצועית של עולם ההייטק הישראלי**!
+2. לעולם אל תענה באנגלית (למעט מונחי קוד טכניים באנגלית כגון שמות פונקציות, שמות משתנים, Big-O כמו O(N), Hash Map, Stack וכדומה).
+3. כל ההסברים, הרמזים, השאלות וההערות חייבים להיכתב בעברית!
+
+הקשר משימת הליטקוד הנוכחית:
+- בעיה: "${problem.title}" (רמת קושי: ${problem.difficulty} - קטגוריה: ${problem.category})
+- אחוז מעבר: ${problem.acceptanceRate}
+- יעד סיבוכיות זמן: ${problem.optimalTimeComplexity}
+- יעד סיבוכיות זיכרון: ${problem.optimalSpaceComplexity}
+- תיאור הבעיה:
 ${problem.description}
 
-- Constraints:
+- אילוצים ותנאי גבול:
 ${problem.constraints.map(c => `  * ${c}`).join('\n')}
 
-- Examples:
-${problem.examples.map(ex => `  * Input: ${ex.input} | Output: ${ex.output}${ex.explanation ? ` (Note: ${ex.explanation})` : ''}`).join('\n')}
+- דוגמאות:
+${problem.examples.map(ex => `  * קלט: ${ex.input} | פלט: ${ex.output}${ex.explanation ? ` (הסבר: ${ex.explanation})` : ''}`).join('\n')}
 
-- Official Progressive Hints:
+- רמזים סוקרטיים הדרגתיים:
 ${problem.hints.map((h, i) => `  ${i + 1}. ${h}`).join('\n')}
 
-CORE INTERVIEWING PRINCIPLES:
-1. TALK LIKE A REAL SENIOR ENGINEER / CHATGPT:
-   - Be conversational, thoughtful, and natural.
-   - When the user asks "how do i approach this?" or "can you tell me how i approach this?", explain the problem intuition, compare brute-force vs optimal approaches (e.g., Hash Map, Two Pointers, Dynamic Programming), and ask what they think.
-   - When the user says "its hard", "i am stuck", or "i dont know", show genuine empathy and break down the problem using a tiny concrete example (e.g. 2-3 numbers or a toy input) to guide them step-by-step.
-   - When the user shares code or an idea, reference their actual code and validate their logic or point out subtle bugs.
-   - If the candidate speaks or types in Hebrew (e.g. "איך פותרים את זה?", "קשה לי"), reply in natural, fluent Hebrew! Otherwise, reply in English.
-2. DO NOT DUMP FULL CODE IMMEDIATELY:
-   - Provide high-level intuition, pseudo-steps, or small syntax hints. Let them write the code in their editor, but if they are completely lost or explicitly ask for an example, provide a small explanatory snippet.
-3. KEEP REPLIES CONCISE & READABLE:
-   - Between 2 to 5 sentences or short formatted bullet points. Avoid massive walls of text that would overwhelm a live candidate.
-4. RETURN FORMAT:
-   - Format your response with markdown (bolding, backticks for code/variables).
-   - At the very end of your response, on a new line, you MUST append a JSON metadata block strictly in this format:
+עקרונות ההנחיה והראיון (INTERVIEWING GUIDELINES):
+1. הדרכה סוקרטית אמיתית:
+   - כשמועמד שואל "איך לגשת לזה?" או "איך מתחילים?", הסבר את האינטואיציה, השווה בין כוח גס (Brute-force) לבין פתרון אופטימלי (למשל Hash Map או שני מצביעים), ושאל מה דעתו.
+   - כשמועמד אומר "קשה לי", "נתקעתי" או "אני לא יודע", הפגן אמפתיה מלאה ופרק את הבעיה באמצעות דוגמה מספרית פשוטה של 2-3 איברים.
+   - לעולם אל תזרוק קוד מלא מוכן! תן רמז לוגי, צעד מחשבתי או שאלת הכוונה שתאפשר לו לכתוב את הקוד בעצמו בעורך מימין.
+2. תגובות ממוקדות ותמציתיות:
+   - בין 2 ל-5 משפטים קריאים ומעוצבים יפה עם בולטים וקטעי קוד קצרים (\`code\`). הימנע ממגילות טקסט ארוכות ומעייפות.
+3. מבנה סיום חובה:
+   - בסוף כל תגובה שלך, בשורה חדשה, עליך להוסיף בלוק מטא-דאטה JSON בפורמט הבא בדיוק:
 <<<METADATA>>>
-{"caption":"Short 1-sentence summary suitable for live audio subtitle","mood":"Attentive|Evaluating Strategy|Probing Trade-offs|Analyzing Traceback|Complexity Review|Impressed","nextState":"GREETING|PROBLEM_CLARIFICATION|CODING|REVIEW_AND_COMPLEXITY|COMPLETED"}
+{"caption":"תקציר משפט אחד בעברית שמתאים לכתוביות","mood":"Attentive|Evaluating Strategy|Probing Trade-offs|Analyzing Traceback|Complexity Review|Impressed","nextState":"GREETING|PROBLEM_CLARIFICATION|CODING|REVIEW_AND_COMPLEXITY|COMPLETED"}
 <<<END_METADATA>>>`;
 }
 
 /**
- * Generates an intelligent, conversational response from Gemini for the LeetCode interview.
+ * Generates an intelligent, conversational response from Gemini for the LeetCode interview in Hebrew.
  */
 export async function generateGeminiLeetCodeResponse({
   problem,
@@ -106,11 +109,11 @@ export async function generateGeminiLeetCodeResponse({
 }): Promise<LeetCodeAgentOutput> {
   const apiKey = getGeminiApiKey();
 
-  // If no Gemini API key is configured, fallback to friendly offline response
+  // If no Gemini API key is configured, fallback to friendly offline Hebrew response
   if (!apiKey) {
     return {
-      text: `Welcome to **${problem.title}**! To enable full conversational AI guidance (like ChatGPT) with live problem understanding and code feedback, please ensure your Gemini API key is configured in \`.env\` or the settings modal. In the meantime, take a look at the problem description on the right and start exploring the brute-force approach!`,
-      caption: `Welcome! Let's explore your approach for ${problem.title}.`,
+      text: `ברוך הבא לאתגר **${problem.title}**! כדי להפעיל בינה מלאכותית מלאה ואינטראקטיבית עם הכוונה סוקרטית בעברית, אנא הגדר את מפתח ה-Gemini שלך. בינתיים, עיין במפרט הבעיה בלשונית משמאל והתחל לחשוב על האינטואיציה האלגוריתמית בעורך הקוד!`,
+      caption: `ברוך הבא! בוא נבחן את הגישה שלך עבור ${problem.title}.`,
       mood: 'Attentive',
       nextState: 'CODING'
     };
@@ -133,60 +136,60 @@ export async function generateGeminiLeetCodeResponse({
     }
   }
 
-  // Construct current prompt context
+  // Construct current prompt context in Hebrew instructions
   let currentPromptText = '';
 
   if (isSubmission && testResults) {
     const failedCases = testResults.filter(tc => !tc.passed);
     const passedCount = testResults.length - failedCases.length;
 
-    currentPromptText = `[CANDIDATE SUBMITTED SOLUTION]
-Selected Language: ${language}
-Current Code in Editor:
+    currentPromptText = `[המועמד הגיש פתרון (SUBMISSION)]
+שפת פיתוח: ${language}
+קוד נוכחי בעורך:
 \`\`\`${language}
 ${candidateCode}
 \`\`\`
-Test Results: ${passedCount}/${testResults.length} test cases passed.
+תוצאות הטסטים: ${passedCount}/${testResults.length} בדיקות עברו בהצלחה.
 ${
   failedCases.length > 0
-    ? `Failed on Case: Input: ${failedCases[0].input} | Expected: ${failedCases[0].expected} | Actual: ${failedCases[0].actual || 'error'}`
-    : `All ${testResults.length} test cases passed successfully!`
+    ? `נכשל במקרה בדיקה: קלט: ${failedCases[0].input} | פלט צפוי: ${failedCases[0].expected} | פלט שהתקבל: ${failedCases[0].actual || 'שגיאה'}`
+    : `כל ${testResults.length} הטסטים עברו בהצלחה!`
 }
 
-Evaluate this submission. If all passed, congratulate them and ask them to analyze the Time and Space complexity. If failed, guide them to see why that edge case failed without giving the answer away directly.`;
+הערך את ההגשה הזו בעברית. אם הכל עבר, ברך אותם ובקש מהם לנתח את סיבוכיות הזמן והמקום (Big-O). אם נכשלו, כוון אותם סוקרטית לחשוב על מקרה הקצה שנכשל מבלי לגלות את הפתרון.`;
   } else if (isCodeRun && executionResult) {
-    currentPromptText = `[CANDIDATE RAN CODE]
-Selected Language: ${language}
-Current Code in Editor:
+    currentPromptText = `[המועמד הריץ קוד לבדיקה מדגמית (RUN CODE)]
+שפת פיתוח: ${language}
+קוד נוכחי בעורך:
 \`\`\`${language}
 ${candidateCode}
 \`\`\`
-Execution Result:
-- Exit Code: ${executionResult.code}
-- Stdout: ${executionResult.stdout || '(none)'}
-- Stderr/Traceback: ${executionResult.stderr || '(none)'}
+תוצאת הרצה:
+- קוד יציאה: ${executionResult.code}
+- פלט סטנדרטי (Stdout): ${executionResult.stdout || '(אין)'}
+- שגיאת ריצה (Stderr): ${executionResult.stderr || '(אין)'}
 
-Provide brief, insightful feedback on what just happened or what to fix next.`;
+תן משוב קצר, בהיר ומקצועי בעברית על מה שקרה וכיצד להתקדם.`;
   } else if (userMessage) {
-    currentPromptText = `[CANDIDATE MESSAGE]
-Candidate says: "${userMessage}"
+    currentPromptText = `[הודעת מועמד]
+המועמד אומר: "${userMessage}"
 
-[CURRENT EDITOR STATE]
-Language: ${language}
-Current Code:
+[מצב עורך הקוד הנוכחי]
+שפת פיתוח: ${language}
+קוד:
 \`\`\`${language}
-${candidateCode || '(no code written yet)'}
+${candidateCode || '(עדיין לא נכתב קוד)'}
 \`\`\`
 
-Respond directly, conversationally, and helpfully to what the candidate just said. If they asked for an approach or said it is hard, guide them step-by-step!`;
+ענה למועמד בעברית טבעית, מקצועית ומעודדת. אם הוא שאל על כיוון פתרון או ציין שקשה לו, הדרך אותו סוקרטית שלב אחר שלב!`;
   } else {
     // Initial greeting prompt
-    currentPromptText = `Please give a warm, professional, and brief opening greeting introducing yourself and the problem "${problem.title}" (${problem.difficulty}). Invite the candidate to share their initial thoughts or approach before jumping into code.`;
+    currentPromptText = `אנא מסור ברכת פתיחה חמה, מקצועית וקצרה בעברית. הצג את עצמך ואת הבעיה "${problem.title}" (רמה: ${problem.difficulty}). הזמן את המועמד לשתף ברעיונות הראשוניים שלו ובכיוון הפתרון לפני כתיבת שורת קוד אחת.`;
   }
 
   contents.push({ role: 'user', parts: [{ text: currentPromptText }] });
 
-  const modelsToTry = [PRIMARY_MODEL, FALLBACK_MODEL, 'gemini-pro-latest'];
+  const modelsToTry = [PRIMARY_MODEL, FALLBACK_MODEL, 'gemini-1.5-pro', 'gemini-pro'];
 
   for (const modelName of modelsToTry) {
     try {
@@ -255,10 +258,9 @@ Respond directly, conversationally, and helpfully to what the candidate just sai
 
   // Graceful fallback if Gemini calls fail
   return {
-    text: `I'm analyzing your approach for **${problem.title}**. Think about how you would solve this manually with pencil and paper. What's the brute-force approach, and what data structure could help optimize the lookup time?`,
-    caption: `Let's break down the optimal approach for ${problem.title}.`,
+    text: `אני מנתח/ת את הכיוון שלך עבור **${problem.title}**. חשוב כיצד היית פותר את הבעיה באופן ידני באמצעות דף ועיפרון. מהו פתרון הכוח הגס (Brute-force), ואיזה מבנה נתונים יוכל לעזור לייעל את החיפוש?`,
+    caption: `בוא ננתח יחד את הגישה האופטימלית ל-${problem.title}.`,
     mood: 'Attentive',
     nextState: 'CODING'
   };
 }
-

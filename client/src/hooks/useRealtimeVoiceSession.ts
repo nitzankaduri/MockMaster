@@ -180,7 +180,7 @@ export function useRealtimeVoiceSession({
       const recognition = new SpeechRecognitionConstructor();
       recognition.continuous = true;
       recognition.interimResults = true;
-      recognition.lang = 'en-US';
+      recognition.lang = 'he-IL';
 
       recognition.onstart = () => {
         setIsListening(true);
@@ -336,24 +336,29 @@ export function useRealtimeVoiceSession({
       utterance.pitch = 0.92;
       utterance.rate = 1.06;
 
-      // Voice selection for Bar Raiser
+      // Voice selection for Hebrew Bar Raiser (Marcus)
       const availableVoices = voicesRef.current.length > 0 ? voicesRef.current : window.speechSynthesis.getVoices();
       let chosenVoice: SpeechSynthesisVoice | undefined = availableVoices.find(
-        v =>
-          (v.name.includes('David') ||
-           v.name.includes('Guy') ||
-           v.name.includes('Mark') ||
-           v.name.includes('George') ||
-           v.name.includes('Google UK English Male')) &&
-          v.lang.startsWith('en')
+        v => v.lang.startsWith('he') || v.lang.includes('IL')
       );
 
       if (!chosenVoice) {
-        chosenVoice = availableVoices.find(v => v.lang.startsWith('en'));
+        chosenVoice = availableVoices.find(
+          v =>
+            (v.name.includes('David') ||
+             v.name.includes('Guy') ||
+             v.name.includes('Mark') ||
+             v.name.includes('George') ||
+             v.name.includes('Google UK English Male')) &&
+            v.lang.startsWith('en')
+        );
       }
 
       if (chosenVoice) {
         utterance.voice = chosenVoice;
+        utterance.lang = chosenVoice.lang;
+      } else {
+        utterance.lang = 'he-IL';
       }
 
       utterance.onstart = () => {
