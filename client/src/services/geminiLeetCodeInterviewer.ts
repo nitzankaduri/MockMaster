@@ -28,8 +28,8 @@ export interface LeetCodeAgentOutput {
   nextState?: InterviewState;
 }
 
-const PRIMARY_MODEL = 'gemini-flash-latest';
-const FALLBACK_MODEL = 'gemini-3-flash-preview';
+const PRIMARY_MODEL = 'gemini-3.1-flash-lite-preview';
+const FALLBACK_MODEL = 'gemini-flash-lite-latest';
 
 /**
  * Builds the system instructions for the AI Interviewer persona in Hebrew.
@@ -124,15 +124,26 @@ export async function generateGeminiLeetCodeResponse({
   // Build conversation history for Gemini
   const contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
 
-  // Recent messages (last 10 turns to preserve context window and latency)
-  const recentMessages = messages.slice(-10);
+  // Exclude the very last message if it's already the userMessage being processed to prevent duplicate user turns
+  const pastMessages =
+    userMessage && messages.length > 0 && messages[messages.length - 1].sender === 'user'
+      ? messages.slice(0, -1)
+      : messages;
+
+  // Recent messages (last 8 turns to preserve context window and latency)
+  const recentMessages = pastMessages.slice(-8);
   for (const msg of recentMessages) {
     if (msg.sender === 'user') {
       contents.push({ role: 'user', parts: [{ text: msg.text }] });
     } else if (msg.sender === 'ai') {
       // Strip any previous metadata blocks from stored text
-      const cleanText = msg.text.replace(/<<<METADATA>>>[\s\S]*?<<<END_METADATA>>>/g, '').trim();
-      contents.push({ role: 'model', parts: [{ text: cleanText }] });
+      const cleanText = msg.text
+        .replace(/<<<METADATA>>>[\s\S]*?<<<END_METADATA>>>/g, '')
+        .replace(/<<<METADATA>>>[\s\S]*$/g, '')
+        .trim();
+      if (cleanText) {
+        contents.push({ role: 'model', parts: [{ text: cleanText }] });
+      }
     }
   }
 
@@ -192,11 +203,15 @@ ${candidateCode || '(עדיין לא נכתב קוד)'}
   const modelsToTry = [
     PRIMARY_MODEL,
     FALLBACK_MODEL,
-    'gemini-3.1-flash-lite-preview',
-    'gemini-flash-lite-latest'
+    'gemini-3.5-flash',
+    'gemini-3-flash-preview',
+    'gemini-flash-latest'
   ];
 
   for (const modelName of modelsToTry) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 9000);
+
     try {
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
@@ -209,12 +224,15 @@ ${candidateCode || '(עדיין לא נכתב קוד)'}
               parts: [{ text: systemInstruction }]
             },
             generationConfig: {
-              temperature: 0.5,
-              maxOutputTokens: 600
+              temperature: 0.6,
+              maxOutputTokens: 2048
             }
-          })
+          }),
+          signal: controller.signal
         }
       );
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errText = await response.text();
@@ -232,18 +250,22 @@ ${candidateCode || '(עדיין לא נכתב קוד)'}
       let mood: InterviewMood = 'Evaluating Strategy';
       let nextState: InterviewState | undefined = undefined;
 
-      const metaMatch = rawText.match(/<<<METADATA>>>([\s\S]*?)<<<END_METADATA>>>/);
+      const metaMatch = rawText.match(/<<<METADATA>>>([\s\S]*?)(?:<<<END_METADATA>>>|$)/);
       if (metaMatch && metaMatch[1]) {
         try {
-          const metaJson = JSON.parse(metaMatch[1].trim());
+          const metaJson = JSON.parse(metaMatch[1].replace(/<<<END_METADATA>>>/g, '').trim());
           if (metaJson.caption) caption = metaJson.caption;
           if (metaJson.mood) mood = metaJson.mood;
           if (metaJson.nextState) nextState = metaJson.nextState;
         } catch {
           // Ignored metadata parse error
         }
-        cleanText = rawText.replace(/<<<METADATA>>>[\s\S]*?<<<END_METADATA>>>/g, '').trim();
       }
+
+      cleanText = rawText
+        .replace(/<<<METADATA>>>[\s\S]*?<<<END_METADATA>>>/g, '')
+        .replace(/<<<METADATA>>>[\s\S]*$/g, '')
+        .trim();
 
       if (!caption) {
         // Derive clean caption from first sentence
@@ -257,15 +279,19 @@ ${candidateCode || '(עדיין לא נכתב קוד)'}
         nextState
       };
     } catch (err) {
+      clearTimeout(timeoutId);
       console.warn(`Failed to call ${modelName}:`, err);
     }
   }
 
   // Graceful fallback if Gemini calls fail
+  const rawHint = problem.hints?.[0] || 'חשוב על שימוש ב-Hash Map או שני מצביעים לייעול החיפוש.';
   return {
-    text: `אני מנתח/ת את הכיוון שלך עבור **${problem.title}**. חשוב כיצד היית פותר את הבעיה באופן ידני באמצעות דף ועיפרון. מהו פתרון הכוח הגס (Brute-force), ואיזה מבנה נתונים יוכל לעזור לייעל את החיפוש?`,
+    text: userMessage
+      ? `שמעתי את שאלתך: "${userMessage}". כדי להתקדם עם ${problem.title}, הנה כיוון חשיבה מנחה: ${rawHint}`
+      : `שלום! אני שרה חן, מהנדסת תוכנה בכירה. בוא נתחיל לחשוב יחד על דרך הפתרון של **${problem.title}**. מה האינטואיציה הראשונית שלך?`,
     caption: `בוא ננתח יחד את הגישה האופטימלית ל-${problem.title}.`,
-    mood: 'Attentive',
+    mood: 'Evaluating Strategy',
     nextState: 'CODING'
   };
 }
