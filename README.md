@@ -77,3 +77,4 @@ npm run dev --prefix client
 - **Speech Recognition:** Web Speech API (`webkitSpeechRecognition` עם תמיכה בעברית `he-IL` ואיחוד שוטף של תמלול ביניים וסופי)
 - **Speech Synthesis:** Google Gemini Multimodal Audio (Aoede voice) עם Fallback מובנה ל-SpeechSynthesis של הדפדפן
 - **AI Intelligence:** Google Gemini Models (`gemini-3.1-flash-lite-preview`, `gemini-flash-lite-latest`, `gemini-3.5-flash`)
+
