@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { PersonaType } from '../types';
+import { hebrewAudio } from '../services/hebrewAudioService';
 
 interface SpeechRecognitionEventLike extends Event {
   resultIndex: number;
@@ -45,7 +46,7 @@ interface UseRealtimeVoiceSessionProps {
 
 export function useRealtimeVoiceSession({
   onSpeechInput,
-  persona = 'mentor'
+  persona: _persona = 'mentor'
 }: UseRealtimeVoiceSessionProps = {}) {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -302,98 +303,66 @@ export function useRealtimeVoiceSession({
 
   // Stop speaking
   const stopSpeaking = useCallback(() => {
+    hebrewAudio.stopSpeaking();
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      setIsSpeaking(false);
-      setCurrentCaption('');
     }
+    setIsSpeaking(false);
+    setCurrentCaption('');
   }, []);
 
-  // Full-duplex speech synthesis with live caption streaming
+  // Full-duplex speech synthesis with warm human female voice and live caption streaming
   const speak = useCallback(
     (text: string) => {
-      if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+      if (typeof window === 'undefined') return;
       if (isMuted) return;
-      // Sarah (mentor) communicates exclusively via text chat, never speak out loud
-      if (persona === 'mentor') return;
 
       const plainText = text
-        .replace(/`{1,3}[^`]*`{1,3}/g, 'code snippet')
-        .replace(/\*\*([^*]+)\*\*/g, '$1')
-        .replace(/\*([^*]+)\*/g, '$1')
-        .replace(/#+\s+/g, '')
-        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+        .replace(/`{1,3}[^`]*`{1,3}/g, 'קטע קוד')
+        .replace(/https?:\/\/\S+/g, '')
+        .replace(/[*_~#>[\]()]/g, '')
+        .replace(/[\u200E\u200F\u200B\u200C\uFEFF]/g, '')
+        .replace(/\s+/g, ' ')
         .trim();
 
       if (!plainText) return;
 
-      // Abort previous utterance
-      window.speechSynthesis.cancel();
-
-      const utterance = new SpeechSynthesisUtterance(plainText);
-
-      // Voice tuning for Bar Raiser (Marcus)
-      utterance.pitch = 0.92;
-      utterance.rate = 1.06;
-
-      // Voice selection for Hebrew Bar Raiser (Marcus)
-      const availableVoices = voicesRef.current.length > 0 ? voicesRef.current : window.speechSynthesis.getVoices();
-      let chosenVoice: SpeechSynthesisVoice | undefined = availableVoices.find(
-        v => v.lang.startsWith('he') || v.lang.includes('IL')
-      );
-
-      if (!chosenVoice) {
-        chosenVoice = availableVoices.find(
-          v =>
-            (v.name.includes('David') ||
-             v.name.includes('Guy') ||
-             v.name.includes('Mark') ||
-             v.name.includes('George') ||
-             v.name.includes('Google UK English Male')) &&
-            v.lang.startsWith('en')
-        );
+      // Abort previous playback
+      hebrewAudio.stopSpeaking();
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
       }
 
-      if (chosenVoice) {
-        utterance.voice = chosenVoice;
-        utterance.lang = chosenVoice.lang;
-      } else {
-        utterance.lang = 'he-IL';
-      }
-
-      utterance.onstart = () => {
-        setIsSpeaking(true);
-        setCurrentCaption(plainText);
-      };
-
-      utterance.onend = () => {
-        setIsSpeaking(false);
-        // Retain final caption briefly before fading
-        setTimeout(() => {
-          if (!isSpeakingRef.current) {
-            setCurrentCaption('');
-          }
-        }, 3000);
-      };
-
-      utterance.onerror = (e) => {
-        if (e.error !== 'canceled') {
-          console.warn('Speech synthesis error:', e);
+      // Speak using warm, natural female Hebrew voice
+      hebrewAudio.speak(plainText, {
+        onStart: () => {
+          setIsSpeaking(true);
+          setCurrentCaption(plainText);
+        },
+        onEnd: () => {
+          setIsSpeaking(false);
+          setTimeout(() => {
+            if (!isSpeakingRef.current) {
+              setCurrentCaption('');
+            }
+          }, 3000);
+        },
+        onSubtitle: (subText) => {
+          setCurrentCaption(subText);
         }
-        setIsSpeaking(false);
-        setCurrentCaption('');
-      };
-
-      window.speechSynthesis.speak(utterance);
+      });
     },
-    [isMuted, persona]
+    [isMuted]
   );
 
   const toggleMute = useCallback(() => {
     setIsMuted(prev => {
       const next = !prev;
-      if (next && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
+      if (next) {
+        hebrewAudio.stopSpeaking();
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+        }
         setIsSpeaking(false);
         setCurrentCaption('');
       }

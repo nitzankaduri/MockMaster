@@ -53,10 +53,17 @@ export const InterviewerAvatar: React.FC<InterviewerAvatarProps> = ({
 
   const getStatusLabel = () => {
     if (personaType === 'mentor') {
-      if (visualState === 'THINKING') {
-        return { label: 'חושבת...', color: 'text-mint-300 bg-mint-950/80 border-mint-500/40' };
+      switch (visualState) {
+        case 'SPEAKING':
+          return { label: 'מדברת...', color: 'text-[#2dd4bf] bg-[#091714] border-[#2dd4bf]/40 shadow-[0_0_12px_rgba(45,212,191,0.25)]' };
+        case 'LISTENING':
+          return { label: 'מקשיבה...', color: 'text-rose-400 bg-rose-950/60 border-rose-500/40 animate-pulse' };
+        case 'THINKING':
+          return { label: 'חושבת...', color: 'text-mint-300 bg-mint-950/80 border-mint-500/40' };
+        case 'IDLE':
+        default:
+          return { label: 'קולית ופעילה', color: 'text-slate-400 bg-[#0c1214] border-[#1a2529]' };
       }
-      return { label: 'צ\'אט טקסט', color: 'text-slate-300 bg-[#0c1214] border-[#1a2529]' };
     }
     switch (visualState) {
       case 'SPEAKING':
@@ -92,7 +99,7 @@ export const InterviewerAvatar: React.FC<InterviewerAvatarProps> = ({
               {activePersona.name}
             </span>
             <span className="text-[10px] text-slate-400 hidden sm:inline">
-              ({personaType === 'mentor' ? 'מנטורית • צ\'אט' : 'Bar Raiser • קול'})
+              ({personaType === 'mentor' ? 'מנטורית • קול וחום' : 'Bar Raiser • קול'})
             </span>
             <ChevronDown className="w-3 h-3 text-slate-400" />
           </button>

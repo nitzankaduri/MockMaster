@@ -53,7 +53,7 @@ export class HebrewAudioService {
         }).catch(() => {});
       }
 
-      if ('speechSynthesis' in window) {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.resume();
       }
     } catch {
@@ -65,7 +65,14 @@ export class HebrewAudioService {
    * Split Hebrew text into natural chunks <= 140 characters on sentence / clause boundaries
    */
   public chunkText(text: string, maxLen: number = 130): string[] {
-    const clean = text.replace(/\s+/g, ' ').trim();
+    const clean = text
+      .replace(/`{1,3}[^`]*`{1,3}/g, ' ')
+      .replace(/https?:\/\/\S+/g, '')
+      .replace(/[*_~#>[\]()]/g, '')
+      .replace(/[\u200E\u200F\u200B\u200C\uFEFF]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
     if (!clean) return [];
     if (clean.length <= maxLen) return [clean];
 
@@ -119,6 +126,7 @@ export class HebrewAudioService {
     }
   ): void {
     this.stopSpeaking();
+    this.unlockAudio();
 
     this.currentFullText = text;
     this.onStartCallback = options?.onStart;
@@ -158,7 +166,7 @@ export class HebrewAudioService {
       return;
     }
 
-    // Use local proxy `/api/tts?text=...` to ensure no browser Referer 404
+    // Use local proxy `/api/tts?text=...` to ensure Google female Hebrew TTS
     const url = `/api/tts?text=${encodeURIComponent(nextChunk)}`;
 
     if (!this.audio) {
@@ -172,7 +180,7 @@ export class HebrewAudioService {
     if (playPromise !== undefined) {
       playPromise.catch((err) => {
         console.warn('Cloud audio playback blocked or failed, attempting speech synthesis fallback:', err);
-        // Fallback to Web Speech API synthesis for this chunk
+        // Fallback to Web Speech API synthesis with warm female voice for this chunk
         this.fallbackSpeechSynthesis(nextChunk, () => {
           this.playNextChunk();
         });
@@ -181,7 +189,7 @@ export class HebrewAudioService {
   }
 
   /**
-   * Fallback using browser SpeechSynthesis if audio element is blocked
+   * Fallback using browser SpeechSynthesis with a warm, natural female voice
    */
   private fallbackSpeechSynthesis(chunk: string, onDone: () => void): void {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
@@ -193,18 +201,59 @@ export class HebrewAudioService {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(chunk);
       utterance.lang = 'he-IL';
-      utterance.rate = 1.0;
+      utterance.rate = 0.95; // Calm, relaxed conversational cadence
+      utterance.pitch = 1.0; // Warm, natural human female pitch (no chipmunk artifact)
+      utterance.volume = 1.0;
 
-      // Select Hebrew voice if exists
+      // Select high-quality female Hebrew voice (strictly avoiding male voices like Asaf)
       const voices = window.speechSynthesis.getVoices();
-      const heVoice = voices.find(
+      const isMale = (name: string): boolean => {
+        const n = name.toLowerCase();
+        return (
+          n.includes('asaf') ||
+          n.includes('david') ||
+          n.includes('guy') ||
+          n.includes('avri') ||
+          n.includes('itai') ||
+          n.includes('yaron') ||
+          n.includes('zvi') ||
+          n.includes('male') ||
+          n.includes('גבר') ||
+          n.includes('אסף') ||
+          n.includes('דוד')
+        );
+      };
+
+      const hebrewVoices = voices.filter(
         (v) =>
-          v.lang.toLowerCase().startsWith('he') ||
-          v.name.includes('Hebrew') ||
-          v.name.includes('עברית')
+          (v.lang.toLowerCase().startsWith('he') ||
+            v.lang.toLowerCase().startsWith('iw') ||
+            v.name.includes('Hebrew') ||
+            v.name.includes('עברית')) &&
+          !isMale(v.name)
       );
-      if (heVoice) {
-        utterance.voice = heVoice;
+
+      const femaleHeVoice =
+        hebrewVoices.find(
+          (v) =>
+            v.name.toLowerCase().includes('hila') ||
+            v.name.toLowerCase().includes('natural')
+        ) ||
+        hebrewVoices.find((v) => v.name.toLowerCase().includes('google')) ||
+        hebrewVoices.find(
+          (v) =>
+            v.name.toLowerCase().includes('carmit') ||
+            v.name.includes('כרמית')
+        ) ||
+        hebrewVoices.find(
+          (v) =>
+            v.name.toLowerCase().includes('sara') ||
+            v.name.toLowerCase().includes('carmel')
+        ) ||
+        hebrewVoices[0];
+
+      if (femaleHeVoice) {
+        utterance.voice = femaleHeVoice;
       }
 
       utterance.onstart = () => {
@@ -262,3 +311,16 @@ export class HebrewAudioService {
 
 // Global singleton instance
 export const hebrewAudio = new HebrewAudioService();
+
+// Automatically unlock audio on the very first user interaction
+if (typeof window !== 'undefined') {
+  const unlock = () => {
+    hebrewAudio.unlockAudio();
+    window.removeEventListener('click', unlock);
+    window.removeEventListener('keydown', unlock);
+    window.removeEventListener('touchstart', unlock);
+  };
+  window.addEventListener('click', unlock, { passive: true });
+  window.addEventListener('keydown', unlock, { passive: true });
+  window.addEventListener('touchstart', unlock, { passive: true });
+}

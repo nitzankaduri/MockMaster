@@ -6,7 +6,6 @@ import {
   VideoOff,
   PhoneOff,
   MessageSquare,
-  Bot,
   User,
   Volume2,
   VolumeX,
@@ -22,6 +21,7 @@ import {
 import { useHebrewInterviewSession } from '../hooks/useHebrewInterviewSession';
 import { DEFAULT_ROLE_PRESETS } from '../types/hebrewInterview';
 import { hasGeminiApiKey } from '../services/geminiVoiceService';
+import { testWarmFemaleVoice } from '../services/warmFemaleVoiceService';
 import { InterviewReportModal } from './InterviewReportModal';
 
 interface HebrewInterviewStageProps {
@@ -67,10 +67,26 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
   const [isCameraOn, setIsCameraOn] = useState<boolean>(true);
   const [isChatOpen, setIsChatOpen] = useState<boolean>(false);
   const [textInput, setTextInput] = useState<string>('');
+  const [isPlayingVoiceSample, setIsPlayingVoiceSample] = useState<boolean>(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Play warm female voice sample
+  const handlePlayVoiceSample = async () => {
+    if (isPlayingVoiceSample) return;
+    setIsPlayingVoiceSample(true);
+    try {
+      await testWarmFemaleVoice(
+        () => setIsPlayingVoiceSample(true),
+        () => setIsPlayingVoiceSample(false),
+        customKeyInput
+      );
+    } catch {
+      setIsPlayingVoiceSample(false);
+    }
+  };
 
   // Format call duration MM:SS
   const formatTimer = (secs: number) => {
@@ -194,9 +210,9 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
               סימולציית ראיון עבודה מקצועי בעברית
             </h2>
 
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-mint-950/80 border border-mint-500/40 text-mint-300 text-xs font-mono font-medium mb-6 shadow-glow-mint">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-mint-950/80 border border-mint-500/40 text-mint-300 text-xs font-mono font-medium mb-6 shadow-glow-mint">
               <Sparkles className="w-3.5 h-3.5 text-mint-400" />
-              <span>Google Gemini 2.0 Flash • דיבור קולי טבעי בעברית (Aoede)</span>
+              <span>קול נשי חם, טבעי ואנושי • רותם (Google Gemini Kore & Neural AI)</span>
             </div>
 
             {/* Role Configuration Box */}
@@ -261,6 +277,17 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
                 <Play className="w-4 h-4 fill-current" />
                 <span>התחל ראיון לתפקיד: {targetRole.trim() || 'Software Engineer'}</span>
               </button>
+
+              <button
+                type="button"
+                onClick={handlePlayVoiceSample}
+                disabled={isPlayingVoiceSample}
+                className="px-6 py-3.5 rounded-full bg-[#111822] hover:bg-[#182330] border border-mint-500/30 hover:border-mint-400 text-mint-300 text-xs font-bold transition-all flex items-center gap-2 shadow-sm"
+                title="בדיקת קול נשי חם"
+              >
+                <Volume2 className={`w-4 h-4 text-mint-400 ${isPlayingVoiceSample ? 'animate-bounce' : ''}`} />
+                <span>{isPlayingVoiceSample ? 'משמיע דוגמת קול נשי...' : 'האזן/י לדוגמת קול נשי (רותם)'}</span>
+              </button>
             </div>
           </div>
         </div>
@@ -294,7 +321,7 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
           <div className="h-4 w-[1px] bg-white/10" />
 
           <span className="text-xs font-semibold text-slate-200 hidden sm:inline">
-            רותם — מנהלת גיוס
+            רותם — מנהלת גיוס והשמה
           </span>
 
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-mint-950/70 border border-mint-500/30 text-mint-300 text-xs font-semibold shadow-glow-mint">
@@ -302,8 +329,9 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
             <span>תפקיד: {targetRole}</span>
           </div>
 
-          <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-[#111822] border border-white/5 text-slate-400 font-mono hidden md:inline">
-            Gemini Voice • Aoede
+          <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-[#111822] border border-white/5 text-mint-300 font-mono hidden md:inline flex items-center gap-1">
+            <Volume2 className="w-3 h-3 text-mint-400" />
+            <span>קול נשי חם • Kore</span>
           </span>
         </div>
 
@@ -380,21 +408,63 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
                 }`}
               />
 
-              {/* Core Avatar Sphere */}
-              <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-gradient-to-tr from-[#060809] via-[#0d161d] to-[#122227] border border-mint-400/40 flex items-center justify-center shadow-[0_0_50px_rgba(45,212,191,0.25)] relative overflow-hidden">
-                <Bot
-                  className={`w-14 h-14 sm:w-16 sm:h-16 transition-all duration-300 ${
-                    isSpeaking
-                      ? 'text-mint-300 scale-110'
-                      : isListening
-                      ? 'text-mint-400 scale-105'
-                      : 'text-slate-400'
+              {/* Core Avatar Sphere - Warm & Human Female Recruiter Avatar */}
+              <div className="w-28 h-28 sm:w-36 sm:h-36 rounded-full bg-gradient-to-tr from-[#0a1815] via-[#102a24] to-[#1a3d34] border border-mint-400/50 flex items-center justify-center shadow-[0_0_50px_rgba(45,212,191,0.3)] relative overflow-hidden group">
+                <svg
+                  viewBox="0 0 100 100"
+                  className={`w-20 h-20 sm:w-24 sm:h-24 transition-all duration-300 ${
+                    isSpeaking ? 'scale-105' : isListening ? 'scale-100' : 'scale-95 opacity-90'
                   }`}
-                />
+                >
+                  <circle cx="50" cy="50" r="45" fill="url(#avatarGlow)" opacity="0.6" />
+                  <defs>
+                    <radialGradient id="avatarGlow" cx="50%" cy="40%" r="50%">
+                      <stop offset="0%" stopColor="#2dd4bf" stopOpacity="0.4" />
+                      <stop offset="100%" stopColor="#042f2e" stopOpacity="0.1" />
+                    </radialGradient>
+                    <linearGradient id="hairGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#3d271d" />
+                      <stop offset="100%" stopColor="#1e130c" />
+                    </linearGradient>
+                    <linearGradient id="skinGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#fed7aa" />
+                      <stop offset="100%" stopColor="#fdba74" />
+                    </linearGradient>
+                    <linearGradient id="suitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#0f766e" />
+                      <stop offset="100%" stopColor="#115e59" />
+                    </linearGradient>
+                  </defs>
+                  
+                  {/* Blazer */}
+                  <path d="M 22 92 C 22 74, 34 68, 50 68 C 66 68, 78 74, 78 92 Z" fill="url(#suitGrad)" />
+                  <path d="M 43 68 L 50 78 L 57 68 Z" fill="#f0fdfa" />
+                  <path d="M 44 54 L 44 68 C 44 70, 56 70, 56 68 L 56 54 Z" fill="url(#skinGrad)" />
+                  
+                  {/* Female Head & Hair */}
+                  <path d="M 28 42 C 28 22, 36 14, 50 14 C 64 14, 72 22, 72 42 C 72 56, 70 66, 68 70 C 66 65, 66 48, 64 42 C 60 44, 40 44, 36 42 C 34 48, 34 65, 32 70 C 30 66, 28 56, 28 42 Z" fill="url(#hairGrad)" />
+                  <ellipse cx="50" cy="42" rx="16" ry="19" fill="url(#skinGrad)" />
+                  <path d="M 34 32 C 38 24, 46 22, 50 24 C 54 22, 62 24, 66 32 C 60 28, 40 28, 34 32 Z" fill="url(#hairGrad)" />
+                  
+                  {/* Smiling Eyes */}
+                  <ellipse cx="44" cy="40" rx="2" ry="2" fill="#134e4a" />
+                  <ellipse cx="56" cy="40" rx="2" ry="2" fill="#134e4a" />
+                  <path d="M 41 36 Q 44 34 47 36" stroke="#292524" strokeWidth="1" fill="none" strokeLinecap="round" />
+                  <path d="M 53 36 Q 56 34 59 36" stroke="#292524" strokeWidth="1" fill="none" strokeLinecap="round" />
+                  {/* Warm Smile */}
+                  <path d="M 44 48 Q 50 53 56 48" stroke="#be123c" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                  
+                  {/* Headset & Mic */}
+                  <path d="M 32 38 C 32 26, 40 18, 50 18 C 60 18, 68 26, 68 38" stroke="#94a3b8" strokeWidth="1.5" fill="none" />
+                  <circle cx="32" cy="38" r="3.5" fill="#334155" />
+                  <circle cx="68" cy="38" r="3.5" fill="#334155" />
+                  <path d="M 32 40 Q 34 54 44 54" stroke="#64748b" strokeWidth="1.2" fill="none" />
+                  <circle cx="44" cy="54" r="2" fill={isSpeaking ? '#2dd4bf' : '#14b8a6'} />
+                </svg>
 
                 {/* Animated Waveform Equalizer when speaking */}
                 {isSpeaking && (
-                  <div className="absolute inset-x-0 bottom-3 flex justify-center items-end space-x-1 space-x-reverse h-6 px-3">
+                  <div className="absolute inset-x-0 bottom-2 flex justify-center items-end space-x-1 space-x-reverse h-6 px-3 bg-gradient-to-t from-[#060809]/90 to-transparent pt-1">
                     {[0.3, 0.8, 0.5, 1.0, 0.6, 0.9, 0.4].map((h, i) => (
                       <span
                         key={i}
@@ -412,11 +482,14 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
 
             {/* Persona Details & Status Chip */}
             <div className="mt-5 text-center">
-              <h3 className="text-base sm:text-lg font-bold text-white tracking-wide">
-                רותם — מראיינת לתפקיד {targetRole}
+              <h3 className="text-base sm:text-lg font-bold text-white tracking-wide flex items-center justify-center gap-2">
+                <span>רותם — מנהלת גיוס והשמה</span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-mint-950/90 border border-mint-400 text-mint-300 font-mono">
+                  קול נשי חם
+                </span>
               </h3>
               <p className="text-xs text-slate-400 mt-0.5 font-sans">
-                סימולציית ראיון מקצועית בהתאמה אישית (Gemini Voice • Aoede)
+                ראיון עבודה מקצועי לתפקיד {targetRole} • קול אנושי טבעי (Gemini Kore Voice)
               </p>
 
               {/* Dynamic Status Indicator */}

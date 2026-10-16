@@ -17,7 +17,7 @@ export const VOICE_ID = 'UZzDIQRRTW2Id7YBcbgC';
 
 // Verified Multilingual Hebrew Voices (Pre-made fallbacks if library voice requires upgrade)
 export const LILY_VOICE_ID = 'pFZP5JQG7iQjIQuC4Bku';    // Lily - Clear, Velvety Multilingual
-export const DANIEL_VOICE_ID = 'onwK4e9ZLuTAKqWW03F9';  // Daniel - Clean Multilingual / News anchor tone
+export const RACHEL_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';  // Rachel - Calm, warm, conversational female
 export const SARAH_VOICE_ID = 'EXAVITQu4vr4xnSDxMaL';   // Sarah - Reassuring Multilingual fallback
 
 // Allow environment override via VITE_ELEVENLABS_VOICE_ID
@@ -134,8 +134,8 @@ export async function speakWithElevenLabs(
   const controller = new AbortController();
   currentAbortController = controller;
 
-  // Ordered candidate voices: User preferred/UZzDIQRRTW2Id7YBcbgC -> Lily -> Daniel -> Sarah
-  const candidateVoices = [voiceId, LILY_VOICE_ID, DANIEL_VOICE_ID, SARAH_VOICE_ID];
+  // Ordered female candidate voices: User preferred/UZzDIQRRTW2Id7YBcbgC -> Lily -> Sarah -> Rachel
+  const candidateVoices = [voiceId, LILY_VOICE_ID, SARAH_VOICE_ID, RACHEL_VOICE_ID];
 
   for (const currentVoice of candidateVoices) {
     try {

@@ -4,6 +4,11 @@
  * with prebuilt voice (Aoede) for natural, fluent conversational Hebrew.
  */
 
+import { hebrewAudio } from './hebrewAudioService';
+import { playWarmFemaleSpeech, testWarmFemaleVoice } from './warmFemaleVoiceService';
+
+export { testWarmFemaleVoice };
+
 // Default Gemini API key from environment variable
 export const DEFAULT_GEMINI_API_KEY = ((import.meta as any).env?.VITE_GEMINI_API_KEY as string) || '';
 
@@ -147,6 +152,12 @@ export function stopSpeaking(): void {
       // Ignored
     }
   }
+
+  try {
+    hebrewAudio.stopSpeaking();
+  } catch {
+    // Ignored
+  }
 }
 
 /**
@@ -179,8 +190,8 @@ export async function generateInterviewerSpeech(
     .replace(/([\u0590-\u05FF]+)\/([\u0590-\u05FF]+)/g, (_m, g1) => g1)
     .trim();
 
-  // Models verified to support native audio generation
-  const models = ['gemini-3.8-flash-tts', 'gemini-3.1-flash-tts-preview'];
+  // Real Gemini 2.0 Flash models supporting native AUDIO generation
+  const models = ['gemini-2.0-flash', 'gemini-2.0-flash-exp'];
 
   for (const model of models) {
     try {
@@ -202,7 +213,7 @@ export async function generateInterviewerSpeech(
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: {
-                voiceName: 'Aoede' // Warm, professional female tone for Rotem
+                voiceName: 'Kore' // Warm, soothing, natural human female voice for Rotem & Sarah
               }
             }
           }
@@ -281,38 +292,37 @@ export async function playInterviewerSpeech(
   stopSpeaking();
 
   try {
-    const blobUrl = await generateInterviewerSpeech(clean, customApiKey);
-    currentAudioUrl = blobUrl;
-
-    const audio = new Audio(blobUrl);
-    currentAudio = audio;
-
-    audio.onplay = () => {
-      onStart?.();
-    };
-
-    audio.onended = () => {
-      stopSpeaking();
-      onEnd?.();
-    };
-
-    audio.onerror = (e) => {
-      console.warn('Gemini audio element playback error, falling back to Web Speech:', e);
-      playWebSpeechFallback(clean, onStart, onEnd);
-    };
-
-    await audio.play();
+    await playWarmFemaleSpeech(clean, {
+      onStart,
+      onEnd: () => {
+        stopSpeaking();
+        onEnd?.();
+      },
+      customApiKey,
+      preferredVoice: 'Kore'
+    });
   } catch (err: any) {
-    if (err.name === 'AbortError') {
+    if (err?.name === 'AbortError') {
       return; // Interrupted by barge-in
     }
-    console.warn('Gemini audio playback unavailable, using browser SpeechSynthesis fallback:', err);
-    playWebSpeechFallback(clean, onStart, onEnd);
+    // High-fidelity fallback: Google Cloud Hebrew Female TTS via hebrewAudio
+    try {
+      hebrewAudio.speak(clean, {
+        onStart,
+        onEnd: () => {
+          stopSpeaking();
+          onEnd?.();
+        }
+      });
+    } catch {
+      console.warn('hebrewAudio unavailable, using browser SpeechSynthesis fallback:', err);
+      playWebSpeechFallback(clean, onStart, onEnd);
+    }
   }
 }
 
 /**
- * Fallback to browser Web Speech API SpeechSynthesis for Hebrew
+ * Fallback to browser Web Speech API SpeechSynthesis with warm, natural female voice
  */
 function playWebSpeechFallback(
   text: string,
@@ -329,15 +339,60 @@ function playWebSpeechFallback(
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'he-IL';
+    utterance.rate = 0.95; // Calm, relaxed conversational cadence
+    utterance.pitch = 1.0; // Warm, natural human female pitch (no chipmunk artifact)
+    utterance.volume = 1.0;
 
     const voices = window.speechSynthesis.getVoices();
-    const heVoice = voices.find((v) => v.lang.startsWith('he'));
-    if (heVoice) {
-      utterance.voice = heVoice;
-    }
+    // Male blacklist to strictly prevent male voice playback (e.g. Asaf, David, Guy)
+    const isMale = (name: string): boolean => {
+      const n = name.toLowerCase();
+      return (
+        n.includes('asaf') ||
+        n.includes('david') ||
+        n.includes('guy') ||
+        n.includes('avri') ||
+        n.includes('itai') ||
+        n.includes('yaron') ||
+        n.includes('zvi') ||
+        n.includes('male') ||
+        n.includes('גבר') ||
+        n.includes('אסף') ||
+        n.includes('דוד')
+      );
+    };
 
-    utterance.pitch = 1.05;
-    utterance.rate = 1.0;
+    const hebrewVoices = voices.filter(
+      (v) =>
+        (v.lang.toLowerCase().startsWith('he') ||
+          v.lang.toLowerCase().startsWith('iw') ||
+          v.name.includes('Hebrew') ||
+          v.name.includes('עברית')) &&
+        !isMale(v.name)
+    );
+
+    const femaleHeVoice =
+      hebrewVoices.find(
+        (v) =>
+          v.name.toLowerCase().includes('hila') ||
+          v.name.toLowerCase().includes('natural')
+      ) ||
+      hebrewVoices.find((v) => v.name.toLowerCase().includes('google')) ||
+      hebrewVoices.find(
+        (v) =>
+          v.name.toLowerCase().includes('carmit') ||
+          v.name.includes('כרמית')
+      ) ||
+      hebrewVoices.find(
+        (v) =>
+          v.name.toLowerCase().includes('sara') ||
+          v.name.toLowerCase().includes('carmel')
+      ) ||
+      hebrewVoices[0];
+
+    if (femaleHeVoice) {
+      utterance.voice = femaleHeVoice;
+    }
 
     utterance.onstart = () => {
       onStart?.();
