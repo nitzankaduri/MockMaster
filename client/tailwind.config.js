@@ -48,6 +48,14 @@ export default {
         'spin-reverse-slow': 'spinReverse 18s linear infinite',
         'orb-breathe': 'orbBreathe 4s ease-in-out infinite alternate',
       },
+      zIndex: {
+        '60': '60',
+        '70': '70',
+        '80': '80',
+        '90': '90',
+        '100': '100',
+        'modal': '9999',
+      },
       keyframes: {
         soundWave: {
           '0%': { height: '4px' },

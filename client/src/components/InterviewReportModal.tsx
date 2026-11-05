@@ -449,8 +449,8 @@ export const InterviewReportModal: React.FC<InterviewReportModalProps> = ({
 
       {/* Gemini API Key Configuration Submodal */}
       {showApiKeyModal && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-md bg-[#0a0f14] border border-mint-500/30 rounded-3xl p-6 shadow-glow-card-mint space-y-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-in fade-in">
+          <div className="relative z-[110] w-full max-w-md bg-[#0a0f14] border border-mint-500/40 rounded-3xl p-6 shadow-[0_0_50px_rgba(45,212,191,0.25)] space-y-4">
             <div className="flex items-center justify-between border-b border-white/5 pb-3">
               <div className="flex items-center gap-2">
                 <Key className="w-5 h-5 text-mint-400" />
@@ -458,14 +458,14 @@ export const InterviewReportModal: React.FC<InterviewReportModalProps> = ({
               </div>
               <button
                 onClick={() => setShowApiKeyModal(false)}
-                className="w-7 h-7 rounded-full bg-[#111822] text-slate-400 hover:text-white flex items-center justify-center"
+                className="w-7 h-7 rounded-full bg-[#111822] text-slate-400 hover:text-white flex items-center justify-center transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <p className="text-xs text-slate-300 leading-relaxed font-sans">
-              הזן מפתח API של Google Gemini עבור הפקת קול טבעי (Gemini 2.0 Flash Audio) ודוח הערכה מעמיק. המפתח נשמר בדפדפן המקומי בלבד (localStorage).
+              הזן מפתח API של Google Gemini עבור הפקת קול טבעי (Gemini 3.8 Flash Native Audio) ודוח הערכה מעמיק. המפתח נשמר בדפדפן המקומי בלבד (localStorage).
             </p>
 
             <div className="space-y-1.5">
