@@ -270,8 +270,47 @@ export function cleanHebrewForSpeech(raw: string): string {
     .trim();
 }
 
+// High-speed in-memory audio Blob URL cache for instantaneous 0ms voice playback
+const voiceAudioCache = new Map<string, string>();
+
 /**
- * Generates natural Hebrew spoken audio via Google Gemini 2.0 Flash Multimodal Audio
+ * Pre-fetch voice audio in background so when user starts interview or clicks repeat,
+ * it plays with zero latency!
+ */
+export async function preloadVoiceAudio(text: string, customApiKey?: string): Promise<string | null> {
+  const clean = cleanHebrewForSpeech(text);
+  if (!clean) return null;
+  if (voiceAudioCache.has(clean)) {
+    return voiceAudioCache.get(clean) || null;
+  }
+  const apiKey = getGeminiApiKey(customApiKey);
+  if (!apiKey) return null;
+
+  try {
+    const url = await generateGeminiFemaleAudio(clean, 'Kore', apiKey);
+    voiceAudioCache.set(clean, url);
+    return url;
+  } catch {
+    // If Gemini audio fails, pre-fetch from /api/tts proxy
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: clean })
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        voiceAudioCache.set(clean, url);
+        return url;
+      }
+    } catch {}
+    return null;
+  }
+}
+
+/**
+ * Generates natural Hebrew spoken audio via Google Gemini Multimodal Audio
  * Uses voice 'Kore' (Google's official warm, soothing, natural female voice) or 'Aoede'
  */
 export async function generateGeminiFemaleAudio(
@@ -279,22 +318,27 @@ export async function generateGeminiFemaleAudio(
   voiceName: 'Kore' | 'Aoede' = 'Kore',
   customApiKey?: string
 ): Promise<string> {
+  const clean = cleanHebrewForSpeech(text);
+  if (!clean) throw new Error('Empty text');
+
+  // Check cache first for 0ms instantaneous response
+  if (voiceAudioCache.has(clean)) {
+    return voiceAudioCache.get(clean)!;
+  }
+
   const apiKey = getGeminiApiKey(customApiKey);
   if (!apiKey) {
     throw new Error('No Gemini API key configured.');
   }
 
-  const clean = cleanHebrewForSpeech(text);
-  if (!clean) throw new Error('Empty text');
-
   const controller = new AbortController();
   currentAbortController = controller;
 
-  // Real Gemini 3.8 / 3.1 Flash TTS models supporting native AUDIO response modalities
+  // Real Gemini Flash TTS models ordered by highest availability and lowest latency
   const models = [
-    'gemini-3.8-flash-tts',
     'gemini-3.1-flash-tts-preview',
-    'gemini-3.8-flash-lite-tts'
+    'gemini-3.8-flash-lite-tts',
+    'gemini-3.8-flash-tts'
   ];
 
   for (const model of models) {
@@ -352,7 +396,9 @@ export async function generateGeminiFemaleAudio(
         });
       }
 
-      return URL.createObjectURL(audioBlob);
+      const blobUrl = URL.createObjectURL(audioBlob);
+      voiceAudioCache.set(clean, blobUrl);
+      return blobUrl;
     } catch (err: any) {
       if (err.name === 'AbortError') throw err;
       console.warn(`Gemini Voice attempt on ${model} failed:`, err);
@@ -525,7 +571,35 @@ export async function playWarmFemaleSpeech(
 
   stopWarmSpeech();
 
-  // 1. PRIMARY GOLD ENGINE: Google Gemini 3.8 Flash Native Audio with prebuilt voice 'Kore'
+  // Instant Cache Check: If audio was already preloaded in background, play with 0ms delay!
+  if (voiceAudioCache.has(clean)) {
+    const cachedUrl = voiceAudioCache.get(clean)!;
+    currentBlobUrl = cachedUrl;
+    const audio = new Audio(cachedUrl);
+    currentAudio = audio;
+
+    audio.onplay = () => {
+      options?.onStart?.();
+    };
+
+    audio.onended = () => {
+      stopWarmSpeech();
+      options?.onEnd?.();
+    };
+
+    audio.onerror = () => {
+      playViaTtsProxy(clean, options?.onStart, options?.onEnd);
+    };
+
+    try {
+      await audio.play();
+      return;
+    } catch {
+      // If cached playback fails, fall through to regenerate
+    }
+  }
+
+  // 1. PRIMARY GOLD ENGINE: Google Gemini Flash Native Audio with prebuilt voice 'Kore'
   const geminiKey = getGeminiApiKey(options?.customApiKey);
   if (geminiKey) {
     try {
@@ -589,6 +663,7 @@ async function playViaTtsProxy(
     const audioBlob = await response.blob();
     const blobUrl = URL.createObjectURL(audioBlob);
     currentBlobUrl = blobUrl;
+    voiceAudioCache.set(cleanHebrewForSpeech(text), blobUrl);
 
     const audio = new Audio(blobUrl);
     currentAudio = audio;

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   playInterviewerSpeech,
-  stopSpeaking,
+  stopSpeaking as stopSpeakingService,
   getGeminiApiKey,
   saveGeminiApiKey
 } from '../services/geminiVoiceService';
@@ -53,6 +53,7 @@ export function useHebrewInterviewSession({
   // Audio / STT states
   const [isListening, setIsListening] = useState<boolean>(false);
   const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
+  const [isInterviewerMuted, setIsInterviewerMuted] = useState<boolean>(false);
   const [isAiThinking, setIsAiThinking] = useState<boolean>(false);
   const [interimTranscript, setInterimTranscript] = useState<string>('');
   const [speechError, setSpeechError] = useState<string | null>(() => {
@@ -76,6 +77,7 @@ export function useHebrewInterviewSession({
   const stageRef = useRef<SessionStage>(currentStage);
   const turnsRef = useRef<Turn[]>(turns);
   const isSpeakingRef = useRef<boolean>(false);
+  const isInterviewerMutedRef = useRef<boolean>(false);
   const isListeningRef = useRef<boolean>(false);
   const isSessionActiveRef = useRef<boolean>(false);
   const isProcessingRef = useRef<boolean>(false);
@@ -153,20 +155,37 @@ export function useHebrewInterviewSession({
     }
   }, []);
 
-  // Speak with native Google Neural Hebrew Voice via /api/tts
+  // Speak with native Google Neural Hebrew Voice via Gemini 3.8 / /api/tts
   const speakText = useCallback(
     async (textToSpeak: string) => {
-      // Immediately silence mic while preparing and playing speech
-      setIsSpeaking(true);
-      isSpeakingRef.current = true;
+      // Abort mic immediately while loading or playing speech
       try {
         recognitionRef.current?.abort();
       } catch {}
+
+      // If interviewer audio is currently muted by candidate, display text and resume listening
+      if (isInterviewerMutedRef.current) {
+        setIsSpeaking(false);
+        isSpeakingRef.current = false;
+        setIsAiThinking(false);
+        setCurrentSubtitle(textToSpeak);
+        setTimeout(() => {
+          if (isSessionActiveRef.current && !isSpeakingRef.current) {
+            startListening();
+          }
+        }, 1200);
+        return;
+      }
+
+      // Show thinking indicator while generating / fetching audio (does not trigger fake speaking animation)
+      setIsAiThinking(true);
 
       try {
         await playInterviewerSpeech(
           textToSpeak,
           () => {
+            // Fired ONLY when audio physically starts playing through the speaker!
+            setIsAiThinking(false);
             setIsSpeaking(true);
             isSpeakingRef.current = true;
             try {
@@ -174,9 +193,11 @@ export function useHebrewInterviewSession({
             } catch {}
           },
           () => {
+            // Fired when audio playback finishes
+            setIsAiThinking(false);
             setIsSpeaking(false);
             isSpeakingRef.current = false;
-            // Short 350ms acoustic buffer so speaker tail doesn't loop back into mic
+            // Acoustic buffer so speaker reverberation doesn't trigger recognition
             setTimeout(() => {
               if (isSessionActiveRef.current && !isSpeakingRef.current) {
                 startListening();
@@ -186,6 +207,7 @@ export function useHebrewInterviewSession({
         );
       } catch (err) {
         console.warn('Interviewer audio playback notice:', err);
+        setIsAiThinking(false);
         setIsSpeaking(false);
         isSpeakingRef.current = false;
         setTimeout(() => {
@@ -412,6 +434,8 @@ export function useHebrewInterviewSession({
       isSpeakingRef.current = false;
       setIsAiThinking(false);
       isProcessingRef.current = false;
+      setIsInterviewerMuted(false);
+      isInterviewerMutedRef.current = false;
       accumulatedFinalRef.current = '';
       candidateSpeechRef.current = '';
       setInterimTranscript('');
@@ -451,8 +475,44 @@ export function useHebrewInterviewSession({
     [speakText]
   );
 
-  // Repeat current question
+  // Stop interviewer speaking immediately and activate candidate microphone
+  const stopSpeaking = useCallback(() => {
+    stopSpeakingService();
+    setIsSpeaking(false);
+    isSpeakingRef.current = false;
+    setIsAiThinking(false);
+    if (isSessionActiveRef.current) {
+      startListening();
+    }
+  }, [startListening]);
+
+  // Two-way toggle for interviewer audio mute state
+  const toggleInterviewerMute = useCallback(() => {
+    setIsInterviewerMuted((prev) => {
+      const next = !prev;
+      isInterviewerMutedRef.current = next;
+      if (next) {
+        // Mute: immediately stop speaking and open mic for candidate
+        stopSpeakingService();
+        setIsSpeaking(false);
+        isSpeakingRef.current = false;
+        setIsAiThinking(false);
+        if (isSessionActiveRef.current) {
+          startListening();
+        }
+      } else {
+        // Unmute: replay the question
+        const textToReplay = lastQuestion || getRoleIntroPrompt(targetRoleRef.current);
+        speakText(textToReplay);
+      }
+      return next;
+    });
+  }, [lastQuestion, speakText, startListening]);
+
+  // Repeat current question - automatically un-mutes and plays
   const repeatQuestion = useCallback(() => {
+    setIsInterviewerMuted(false);
+    isInterviewerMutedRef.current = false;
     const textToSpeak = lastQuestion || getRoleIntroPrompt(targetRoleRef.current);
     setCurrentSubtitle(textToSpeak);
     speakText(textToSpeak);
@@ -550,6 +610,8 @@ export function useHebrewInterviewSession({
       isSpeakingRef.current = false;
       setIsAiThinking(false);
       isProcessingRef.current = false;
+      setIsInterviewerMuted(false);
+      isInterviewerMutedRef.current = false;
       accumulatedFinalRef.current = '';
       candidateSpeechRef.current = '';
       setInterimTranscript('');
@@ -612,6 +674,8 @@ export function useHebrewInterviewSession({
     // Voice & speech
     isListening,
     isSpeaking,
+    isInterviewerMuted,
+    toggleInterviewerMute,
     isAiThinking,
     interimTranscript,
     speechError,

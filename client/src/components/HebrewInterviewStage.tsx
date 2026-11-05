@@ -21,7 +21,8 @@ import {
 import { useHebrewInterviewSession } from '../hooks/useHebrewInterviewSession';
 import { DEFAULT_ROLE_PRESETS } from '../types/hebrewInterview';
 import { hasGeminiApiKey } from '../services/geminiVoiceService';
-import { testWarmFemaleVoice } from '../services/warmFemaleVoiceService';
+import { testWarmFemaleVoice, preloadVoiceAudio } from '../services/warmFemaleVoiceService';
+import { getRoleIntroPrompt } from '../services/hebrewRoleInterviewService';
 import { InterviewReportModal } from './InterviewReportModal';
 
 interface HebrewInterviewStageProps {
@@ -42,10 +43,11 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
     currentSubtitle,
     isListening,
     isSpeaking,
+    isInterviewerMuted,
+    toggleInterviewerMute,
     isAiThinking,
     interimTranscript,
     speechError,
-    stopSpeaking,
     toggleListening,
     repeatQuestion,
     submitCurrentSpeech,
@@ -72,6 +74,14 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Pre-fetch introductory speech in the background so that clicking "Start Interview" has 0 latency
+  useEffect(() => {
+    if (!isSessionActive) {
+      const intro = getRoleIntroPrompt(targetRole);
+      preloadVoiceAudio(intro, customKeyInput);
+    }
+  }, [targetRole, isSessionActive, customKeyInput]);
 
   // Play warm female voice sample
   const handlePlayVoiceSample = async () => {
@@ -494,10 +504,15 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
 
               {/* Dynamic Status Indicator */}
               <div className="mt-3 inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold border backdrop-blur-md transition-all">
-                {isAiThinking ? (
+                {isInterviewerMuted ? (
+                  <span className="flex items-center gap-2 text-rose-300 border-rose-500/40 bg-rose-950/80 shadow-[0_0_15px_rgba(244,63,94,0.3)]">
+                    <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+                    קול המראיינת מושתק (לחץ/י על הרמקול למטה לשמיעה)
+                  </span>
+                ) : isAiThinking ? (
                   <span className="flex items-center gap-2 text-amber-300 border-amber-500/40 bg-amber-950/80 shadow-[0_0_15px_rgba(245,158,11,0.3)]">
                     <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
-                    רותם חושבת ומנסחת שאלת המשך...
+                    רותם חושבת ומכינה את השאלה...
                   </span>
                 ) : isSpeaking ? (
                   <span className="flex items-center gap-2 text-mint-300 border-mint-500/40 bg-mint-950/80 shadow-glow-mint">
@@ -753,16 +768,30 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
             <span>התחל מחדש</span>
           </button>
 
-          {/* Stop AI Speaking (if talking) */}
-          {isSpeaking && (
-            <button
-              onClick={stopSpeaking}
-              title="עצור דיבור מראיינת"
-              className="p-3 rounded-full bg-mint-950/80 hover:bg-mint-900 border border-mint-500/50 text-mint-300 transition-colors shadow-glow-mint"
-            >
-              <VolumeX className="w-5 h-5" />
-            </button>
-          )}
+          {/* Interviewer Audio Mute / Unmute Toggle */}
+          <button
+            onClick={toggleInterviewerMute}
+            title={
+              isInterviewerMuted
+                ? 'בטל השתקת מראיינת (הפעל שמע מחדש)'
+                : isSpeaking
+                ? 'עצור דיבור מראיינת כעת'
+                : 'השתק קול מראיינת'
+            }
+            className={`p-3 rounded-full border transition-all ${
+              isInterviewerMuted
+                ? 'bg-rose-950/70 border-rose-500/70 text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.3)]'
+                : isSpeaking
+                ? 'bg-mint-950/90 border-mint-400 text-mint-300 shadow-glow-mint animate-pulse'
+                : 'bg-[#111822] border-white/10 text-slate-300 hover:text-white hover:border-mint-500/30'
+            }`}
+          >
+            {isInterviewerMuted ? (
+              <VolumeX className="w-5 h-5 text-rose-400" />
+            ) : (
+              <Volume2 className="w-5 h-5 text-mint-400" />
+            )}
+          </button>
 
           {/* End Interview & Trigger Gemini Report */}
           <button
