@@ -26,10 +26,15 @@ export const ELEVENLABS_FEMALE_VOICES = {
 
 // Singleton states
 let currentAudio: HTMLAudioElement | null = null;
-let currentBlobUrl: string | null = null;
-let currentAbortController: AbortController | null = null;
+let currentPlayUrl: string | null = null;
+let currentPlaybackAbortController: AbortController | null = null;
 let cachedBrowserVoices: SpeechSynthesisVoice[] = [];
 let voicesLoadedPromise: Promise<SpeechSynthesisVoice[]> | null = null;
+
+// High-speed in-memory audio Blob cache (persists raw audio binary data, immune to URL revocation)
+const voiceBlobCache = new Map<string, Blob>();
+// Active in-flight preload promises to avoid duplicate requests and prevent aborting during button clicks
+const inFlightPreloadMap = new Map<string, Promise<Blob | null>>();
 
 /**
  * Preload and cache browser SpeechSynthesis voices asynchronously
@@ -215,9 +220,9 @@ function clearKeepAlive() {
 export function stopWarmSpeech(): void {
   clearKeepAlive();
 
-  if (currentAbortController) {
-    currentAbortController.abort();
-    currentAbortController = null;
+  if (currentPlaybackAbortController) {
+    currentPlaybackAbortController.abort();
+    currentPlaybackAbortController = null;
   }
 
   if (currentAudio) {
@@ -229,11 +234,11 @@ export function stopWarmSpeech(): void {
     currentAudio = null;
   }
 
-  if (currentBlobUrl) {
+  if (currentPlayUrl) {
     try {
-      URL.revokeObjectURL(currentBlobUrl);
+      URL.revokeObjectURL(currentPlayUrl);
     } catch {}
-    currentBlobUrl = null;
+    currentPlayUrl = null;
   }
 
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -270,74 +275,19 @@ export function cleanHebrewForSpeech(raw: string): string {
     .trim();
 }
 
-// High-speed in-memory audio Blob URL cache for instantaneous 0ms voice playback
-const voiceAudioCache = new Map<string, string>();
-
 /**
- * Pre-fetch voice audio in background so when user starts interview or clicks repeat,
- * it plays with zero latency!
- */
-export async function preloadVoiceAudio(text: string, customApiKey?: string): Promise<string | null> {
-  const clean = cleanHebrewForSpeech(text);
-  if (!clean) return null;
-  if (voiceAudioCache.has(clean)) {
-    return voiceAudioCache.get(clean) || null;
-  }
-  const apiKey = getGeminiApiKey(customApiKey);
-  if (!apiKey) return null;
-
-  try {
-    const url = await generateGeminiFemaleAudio(clean, 'Kore', apiKey);
-    voiceAudioCache.set(clean, url);
-    return url;
-  } catch {
-    // If Gemini audio fails, pre-fetch from /api/tts proxy
-    try {
-      const res = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: clean })
-      });
-      if (res.ok) {
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        voiceAudioCache.set(clean, url);
-        return url;
-      }
-    } catch {}
-    return null;
-  }
-}
-
-/**
- * Generates natural Hebrew spoken audio via Google Gemini Multimodal Audio
+ * Fetches raw audio Blob directly via Gemini Flash Audio models
  * Uses voice 'Kore' (Google's official warm, soothing, natural female voice) or 'Aoede'
  */
-export async function generateGeminiFemaleAudio(
-  text: string,
+export async function fetchGeminiFemaleAudioBlob(
+  cleanText: string,
   voiceName: 'Kore' | 'Aoede' = 'Kore',
-  customApiKey?: string
-): Promise<string> {
-  const clean = cleanHebrewForSpeech(text);
-  if (!clean) throw new Error('Empty text');
-
-  // Check cache first for 0ms instantaneous response
-  if (voiceAudioCache.has(clean)) {
-    return voiceAudioCache.get(clean)!;
-  }
-
-  const apiKey = getGeminiApiKey(customApiKey);
-  if (!apiKey) {
-    throw new Error('No Gemini API key configured.');
-  }
-
-  const controller = new AbortController();
-  currentAbortController = controller;
-
-  // Real Gemini Flash TTS models ordered by highest availability and lowest latency
+  apiKey: string,
+  signal?: AbortSignal
+): Promise<Blob> {
   const models = [
-    'gemini-3.1-flash-tts-preview',
     'gemini-3.8-flash-lite-tts',
+    'gemini-3.1-flash-tts-preview',
     'gemini-3.8-flash-tts'
   ];
 
@@ -351,7 +301,7 @@ export async function generateGeminiFemaleAudio(
           contents: [
             {
               role: 'user',
-              parts: [{ text: clean }]
+              parts: [{ text: cleanText }]
             }
           ],
           generationConfig: {
@@ -359,17 +309,16 @@ export async function generateGeminiFemaleAudio(
             speechConfig: {
               voiceConfig: {
                 prebuiltVoiceConfig: {
-                  voiceName // 'Kore' is warm and natural; 'Aoede' is professional
+                  voiceName
                 }
               }
             }
           }
         }),
-        signal: controller.signal
+        signal
       });
 
       if (!response.ok) {
-        console.warn(`Gemini Voice API status ${response.status} on ${model}`);
         continue;
       }
 
@@ -396,16 +345,99 @@ export async function generateGeminiFemaleAudio(
         });
       }
 
-      const blobUrl = URL.createObjectURL(audioBlob);
-      voiceAudioCache.set(clean, blobUrl);
-      return blobUrl;
+      return audioBlob;
     } catch (err: any) {
       if (err.name === 'AbortError') throw err;
-      console.warn(`Gemini Voice attempt on ${model} failed:`, err);
     }
   }
 
   throw new Error('All Gemini Audio model attempts failed.');
+}
+
+/**
+ * Robust fetcher that falls back to Google Neural TTS proxy if needed
+ */
+async function fetchAudioBlobWithFallbacks(
+  cleanText: string,
+  customApiKey?: string,
+  preferredVoice: 'Kore' | 'Aoede' = 'Kore',
+  signal?: AbortSignal
+): Promise<Blob> {
+  const apiKey = getGeminiApiKey(customApiKey);
+  if (apiKey) {
+    try {
+      const blob = await fetchGeminiFemaleAudioBlob(cleanText, preferredVoice, apiKey, signal);
+      if (blob && blob.size > 0) return blob;
+    } catch (e: any) {
+      if (e?.name === 'AbortError') throw e;
+    }
+  }
+
+  // Fallback to /api/tts proxy
+  const proxyRes = await fetch('/api/tts', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text: cleanText }),
+    signal
+  });
+  if (!proxyRes.ok) {
+    throw new Error(`TTS proxy failed with ${proxyRes.status}`);
+  }
+  return await proxyRes.blob();
+}
+
+/**
+ * Pre-fetch voice audio in background into binary Blob cache.
+ * When candidate clicks 'Start Interview' or 'Repeat Question', audio plays instantaneously in 0ms!
+ */
+export async function preloadVoiceAudio(text: string, customApiKey?: string): Promise<Blob | null> {
+  const clean = cleanHebrewForSpeech(text);
+  if (!clean) return null;
+
+  if (voiceBlobCache.has(clean)) {
+    return voiceBlobCache.get(clean)!;
+  }
+  if (inFlightPreloadMap.has(clean)) {
+    return inFlightPreloadMap.get(clean)!;
+  }
+
+  const promise = (async () => {
+    try {
+      const blob = await fetchAudioBlobWithFallbacks(clean, customApiKey, 'Kore');
+      if (blob) {
+        voiceBlobCache.set(clean, blob);
+      }
+      return blob;
+    } catch {
+      return null;
+    } finally {
+      inFlightPreloadMap.delete(clean);
+    }
+  })();
+
+  inFlightPreloadMap.set(clean, promise);
+  return promise;
+}
+
+/**
+ * Generates natural Hebrew spoken audio via Google Gemini Multimodal Audio
+ * Returns an ephemeral Object URL (used by legacy callers if any)
+ */
+export async function generateGeminiFemaleAudio(
+  text: string,
+  voiceName: 'Kore' | 'Aoede' = 'Kore',
+  customApiKey?: string
+): Promise<string> {
+  const clean = cleanHebrewForSpeech(text);
+  if (!clean) throw new Error('Empty text');
+
+  let blob = voiceBlobCache.get(clean);
+  if (!blob) {
+    const apiKey = getGeminiApiKey(customApiKey);
+    blob = await fetchGeminiFemaleAudioBlob(clean, voiceName, apiKey);
+    voiceBlobCache.set(clean, blob);
+  }
+  return URL.createObjectURL(blob);
 }
 
 /**
@@ -426,7 +458,7 @@ export async function generateElevenLabsFemaleAudio(
   if (!clean) throw new Error('Empty text');
 
   const controller = new AbortController();
-  currentAbortController = controller;
+  currentPlaybackAbortController = controller;
 
   // Strict female candidate voices in priority order
   const candidateVoiceIds = [
@@ -549,9 +581,9 @@ export async function speakBrowserWarmFemaleVoice(
 
 /**
  * Universal Warm Female Speech Player:
- * 1. Primary Engine: Google Gemini 3.8 Flash Native Audio ('Kore' - natural human female)
+ * 1. Primary Engine: Google Gemini 3.8 / 3.1 Flash Native Audio ('Kore' - natural human female)
  * 2. Secondary Engine: Google Cloud Hebrew Neural Voice via /api/tts proxy
- * 3. Third Engine: ElevenLabs Neural Multilingual v2 (if key provided)
+ * 3. In-memory permanent Blob caching guarantees instant 0ms start and robust repeat/unmute!
  * STRICTLY NO ROBOTIC BROWSER SAPI SYNTHESIS
  */
 export async function playWarmFemaleSpeech(
@@ -571,121 +603,71 @@ export async function playWarmFemaleSpeech(
 
   stopWarmSpeech();
 
-  // Instant Cache Check: If audio was already preloaded in background, play with 0ms delay!
-  if (voiceAudioCache.has(clean)) {
-    const cachedUrl = voiceAudioCache.get(clean)!;
-    currentBlobUrl = cachedUrl;
-    const audio = new Audio(cachedUrl);
-    currentAudio = audio;
+  // 1. Get audio Blob: from memory cache, in-flight background preload, or fresh fetch
+  let blob: Blob | null | undefined = voiceBlobCache.get(clean);
+
+  if (!blob && inFlightPreloadMap.has(clean)) {
+    blob = await inFlightPreloadMap.get(clean);
+  }
+
+  if (!blob) {
+    const playbackController = new AbortController();
+    currentPlaybackAbortController = playbackController;
+    try {
+      blob = await fetchAudioBlobWithFallbacks(
+        clean,
+        options?.customApiKey,
+        options?.preferredVoice || 'Kore',
+        playbackController.signal
+      );
+      if (blob) {
+        voiceBlobCache.set(clean, blob);
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      options?.onEnd?.();
+      return;
+    }
+  }
+
+  if (!blob || blob.size === 0) {
+    options?.onEnd?.();
+    return;
+  }
+
+  // 2. Create fresh ephemeral URL strictly for this playback instance
+  const playUrl = URL.createObjectURL(blob);
+  currentPlayUrl = playUrl;
+
+  const audio = new Audio(playUrl);
+  currentAudio = audio;
+
+  return new Promise<void>((resolve) => {
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      stopWarmSpeech();
+      options?.onEnd?.();
+      resolve();
+    };
 
     audio.onplay = () => {
       options?.onStart?.();
     };
 
     audio.onended = () => {
-      stopWarmSpeech();
-      options?.onEnd?.();
+      finish();
     };
 
     audio.onerror = () => {
-      playViaTtsProxy(clean, options?.onStart, options?.onEnd);
+      finish();
     };
 
-    try {
-      await audio.play();
-      return;
-    } catch {
-      // If cached playback fails, fall through to regenerate
-    }
-  }
-
-  // 1. PRIMARY GOLD ENGINE: Google Gemini Flash Native Audio with prebuilt voice 'Kore'
-  const geminiKey = getGeminiApiKey(options?.customApiKey);
-  if (geminiKey) {
-    try {
-      const blobUrl = await generateGeminiFemaleAudio(
-        clean,
-        options?.preferredVoice || 'Kore',
-        geminiKey
-      );
-      currentBlobUrl = blobUrl;
-      const audio = new Audio(blobUrl);
-      currentAudio = audio;
-
-      audio.onplay = () => {
-        options?.onStart?.();
-      };
-
-      audio.onended = () => {
-        stopWarmSpeech();
-        options?.onEnd?.();
-      };
-
-      audio.onerror = () => {
-        playViaTtsProxy(clean, options?.onStart, options?.onEnd);
-      };
-
-      await audio.play();
-      return;
-    } catch (err: any) {
-      if (err?.name === 'AbortError') return;
-      console.warn('Gemini 3.8 Flash Audio failed, falling back to /api/tts proxy:', err);
-    }
-  }
-
-  // 2. SECONDARY HIGH-FIDELITY ENGINE: /api/tts proxy (Google Neural Hebrew Voice)
-  await playViaTtsProxy(clean, options?.onStart, options?.onEnd);
-}
-
-/**
- * Fallback to Google Neural TTS Proxy
- */
-async function playViaTtsProxy(
-  text: string,
-  onStart?: () => void,
-  onEnd?: () => void
-): Promise<void> {
-  try {
-    const controller = new AbortController();
-    currentAbortController = controller;
-
-    const response = await fetch('/api/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
-      signal: controller.signal
+    audio.play().catch(() => {
+      finish();
     });
-
-    if (!response.ok) {
-      throw new Error(`TTS proxy status: ${response.status}`);
-    }
-
-    const audioBlob = await response.blob();
-    const blobUrl = URL.createObjectURL(audioBlob);
-    currentBlobUrl = blobUrl;
-    voiceAudioCache.set(cleanHebrewForSpeech(text), blobUrl);
-
-    const audio = new Audio(blobUrl);
-    currentAudio = audio;
-
-    audio.onplay = () => onStart?.();
-    audio.onended = () => {
-      stopWarmSpeech();
-      onEnd?.();
-    };
-    audio.onerror = () => {
-      stopWarmSpeech();
-      onEnd?.();
-    };
-
-    await audio.play();
-  } catch (err: any) {
-    if (err?.name !== 'AbortError') {
-      console.warn('TTS playback completed/aborted:', err);
-    }
-    stopWarmSpeech();
-    onEnd?.();
-  }
+  });
 }
 
 /**

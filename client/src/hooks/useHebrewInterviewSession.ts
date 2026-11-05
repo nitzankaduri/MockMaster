@@ -488,25 +488,24 @@ export function useHebrewInterviewSession({
 
   // Two-way toggle for interviewer audio mute state
   const toggleInterviewerMute = useCallback(() => {
-    setIsInterviewerMuted((prev) => {
-      const next = !prev;
-      isInterviewerMutedRef.current = next;
-      if (next) {
-        // Mute: immediately stop speaking and open mic for candidate
-        stopSpeakingService();
-        setIsSpeaking(false);
-        isSpeakingRef.current = false;
-        setIsAiThinking(false);
-        if (isSessionActiveRef.current) {
-          startListening();
-        }
-      } else {
-        // Unmute: replay the question
-        const textToReplay = lastQuestion || getRoleIntroPrompt(targetRoleRef.current);
-        speakText(textToReplay);
+    const nextMuted = !isInterviewerMutedRef.current;
+    isInterviewerMutedRef.current = nextMuted;
+    setIsInterviewerMuted(nextMuted);
+
+    if (nextMuted) {
+      // Mute: immediately stop speaking and open mic for candidate
+      stopSpeakingService();
+      setIsSpeaking(false);
+      isSpeakingRef.current = false;
+      setIsAiThinking(false);
+      if (isSessionActiveRef.current) {
+        startListening();
       }
-      return next;
-    });
+    } else {
+      // Unmute: replay the question
+      const textToReplay = lastQuestion || getRoleIntroPrompt(targetRoleRef.current);
+      speakText(textToReplay);
+    }
   }, [lastQuestion, speakText, startListening]);
 
   // Repeat current question - automatically un-mutes and plays
