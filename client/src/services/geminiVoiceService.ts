@@ -196,8 +196,12 @@ export async function generateInterviewerSpeech(
     .replace(/([\u0590-\u05FF]+)\/([\u0590-\u05FF]+)/g, (_m, g1) => g1)
     .trim();
 
-  // Real Gemini 2.0 Flash models supporting native AUDIO generation
-  const models = ['gemini-2.0-flash', 'gemini-2.0-flash-exp'];
+  // Real Gemini Flash TTS models supporting native AUDIO generation
+  const models = [
+    'gemini-3.8-flash-tts',
+    'gemini-3.1-flash-tts-preview',
+    'gemini-3.8-flash-lite-tts'
+  ];
 
   for (const model of models) {
     try {
@@ -321,106 +325,10 @@ export async function playInterviewerSpeech(
         }
       });
     } catch {
-      console.warn('hebrewAudio unavailable, using browser SpeechSynthesis fallback:', err);
-      playWebSpeechFallback(clean, onStart, onEnd);
+      stopSpeaking();
+      onEnd?.();
     }
   }
 }
 
-/**
- * Fallback to browser Web Speech API SpeechSynthesis with warm, natural female voice
- */
-function playWebSpeechFallback(
-  text: string,
-  onStart?: () => void,
-  onEnd?: () => void
-): void {
-  if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-    stopSpeaking();
-    onEnd?.();
-    return;
-  }
 
-  try {
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'he-IL';
-    utterance.rate = 0.95; // Calm, relaxed conversational cadence
-    utterance.pitch = 1.0; // Warm, natural human female pitch (no chipmunk artifact)
-    utterance.volume = 1.0;
-
-    const voices = window.speechSynthesis.getVoices();
-    // Male blacklist to strictly prevent male voice playback (e.g. Asaf, David, Guy)
-    const isMale = (name: string): boolean => {
-      const n = name.toLowerCase();
-      return (
-        n.includes('asaf') ||
-        n.includes('david') ||
-        n.includes('guy') ||
-        n.includes('avri') ||
-        n.includes('itai') ||
-        n.includes('yaron') ||
-        n.includes('zvi') ||
-        n.includes('male') ||
-        n.includes('גבר') ||
-        n.includes('אסף') ||
-        n.includes('דוד')
-      );
-    };
-
-    const hebrewVoices = voices.filter(
-      (v) =>
-        (v.lang.toLowerCase().startsWith('he') ||
-          v.lang.toLowerCase().startsWith('iw') ||
-          v.name.includes('Hebrew') ||
-          v.name.includes('עברית')) &&
-        !isMale(v.name)
-    );
-
-    const femaleHeVoice =
-      hebrewVoices.find(
-        (v) =>
-          v.name.toLowerCase().includes('hila') ||
-          v.name.toLowerCase().includes('natural')
-      ) ||
-      hebrewVoices.find((v) => v.name.toLowerCase().includes('google')) ||
-      hebrewVoices.find(
-        (v) =>
-          v.name.toLowerCase().includes('carmit') ||
-          v.name.includes('כרמית')
-      ) ||
-      hebrewVoices.find(
-        (v) =>
-          v.name.toLowerCase().includes('sara') ||
-          v.name.toLowerCase().includes('carmel')
-      ) ||
-      hebrewVoices[0];
-
-    if (femaleHeVoice) {
-      utterance.voice = femaleHeVoice;
-    }
-
-    utterance.onstart = () => {
-      onStart?.();
-    };
-
-    utterance.onend = () => {
-      stopSpeaking();
-      onEnd?.();
-    };
-
-    utterance.onerror = (e) => {
-      if (e.error !== 'canceled') {
-        console.warn('Browser SpeechSynthesis error:', e);
-      }
-      stopSpeaking();
-      onEnd?.();
-    };
-
-    window.speechSynthesis.speak(utterance);
-  } catch (e) {
-    console.error('SpeechSynthesis fallback error:', e);
-    stopSpeaking();
-    onEnd?.();
-  }
-}

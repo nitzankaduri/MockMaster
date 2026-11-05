@@ -183,108 +183,26 @@ export class HebrewAudioService {
           try {
             URL.revokeObjectURL(url);
           } catch {}
-          this.fallbackSpeechSynthesis(clean, () => this.onEndCallback?.());
+          this.onEndCallback?.();
         };
 
         const playPromise = this.audio.play();
         if (playPromise !== undefined) {
           playPromise.catch((err) => {
-            console.warn('Audio play failed, falling back:', err);
-            this.fallbackSpeechSynthesis(clean, () => this.onEndCallback?.());
+            console.warn('Audio play failed:', err);
+            this.isPlayingQueue = false;
+            this.onEndCallback?.();
           });
         }
       })
       .catch((err) => {
-        console.warn('TTS proxy request failed, falling back to speech synthesis:', err);
-        this.fallbackSpeechSynthesis(clean, () => this.onEndCallback?.());
+        console.warn('TTS proxy request failed:', err);
+        this.isPlayingQueue = false;
+        this.onEndCallback?.();
       });
   }
 
-  /**
-   * Fallback using browser SpeechSynthesis with a warm, natural female voice
-   */
-  private fallbackSpeechSynthesis(chunk: string, onDone: () => void): void {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      onDone();
-      return;
-    }
 
-    try {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(chunk);
-      utterance.lang = 'he-IL';
-      utterance.rate = 0.95; // Calm, relaxed conversational cadence
-      utterance.pitch = 1.0; // Warm, natural human female pitch (no chipmunk artifact)
-      utterance.volume = 1.0;
-
-      // Select high-quality female Hebrew voice (strictly avoiding male voices like Asaf)
-      const voices = window.speechSynthesis.getVoices();
-      const isMale = (name: string): boolean => {
-        const n = name.toLowerCase();
-        return (
-          n.includes('asaf') ||
-          n.includes('david') ||
-          n.includes('guy') ||
-          n.includes('avri') ||
-          n.includes('itai') ||
-          n.includes('yaron') ||
-          n.includes('zvi') ||
-          n.includes('male') ||
-          n.includes('גבר') ||
-          n.includes('אסף') ||
-          n.includes('דוד')
-        );
-      };
-
-      const hebrewVoices = voices.filter(
-        (v) =>
-          (v.lang.toLowerCase().startsWith('he') ||
-            v.lang.toLowerCase().startsWith('iw') ||
-            v.name.includes('Hebrew') ||
-            v.name.includes('עברית')) &&
-          !isMale(v.name)
-      );
-
-      const femaleHeVoice =
-        hebrewVoices.find(
-          (v) =>
-            v.name.toLowerCase().includes('hila') ||
-            v.name.toLowerCase().includes('natural')
-        ) ||
-        hebrewVoices.find((v) => v.name.toLowerCase().includes('google')) ||
-        hebrewVoices.find(
-          (v) =>
-            v.name.toLowerCase().includes('carmit') ||
-            v.name.includes('כרמית')
-        ) ||
-        hebrewVoices.find(
-          (v) =>
-            v.name.toLowerCase().includes('sara') ||
-            v.name.toLowerCase().includes('carmel')
-        ) ||
-        hebrewVoices[0];
-
-      if (femaleHeVoice) {
-        utterance.voice = femaleHeVoice;
-      }
-
-      utterance.onstart = () => {
-        if (this.onStartCallback) this.onStartCallback();
-      };
-
-      utterance.onend = () => {
-        onDone();
-      };
-
-      utterance.onerror = () => {
-        onDone();
-      };
-
-      window.speechSynthesis.speak(utterance);
-    } catch {
-      onDone();
-    }
-  }
 
   /**
    * Immediately abort any speaking audio (Barge-In)

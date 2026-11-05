@@ -68,12 +68,12 @@ export function useInterviewerAgent({
     hasTriggeredIdleNudgeRef.current = false;
   }, [lastCodeEditTime]);
 
-  // Append message and optionally speak it
+  // Append message to chat (LeetCode assistant is strictly a text-only AI chat, never speaks aloud)
   const addMessage = useCallback(
     (
       sender: 'ai' | 'user' | 'system',
       text: string,
-      shouldSpeak: boolean = false,
+      _shouldSpeak: boolean = false,
       hintLevel?: number
     ) => {
       const newMessage: Message = {
@@ -88,12 +88,7 @@ export function useInterviewerAgent({
       };
 
       setMessages(prev => [...prev, newMessage]);
-
-      // Speak AI messages aloud with warm human female voice
-      if (shouldSpeak && sender === 'ai') {
-        speakRef.current(text);
-      }
-
+      // LeetCode agent is strictly text-based AI chat - never speaks aloud
       return newMessage;
     },
     [personaType]

@@ -311,48 +311,12 @@ export function useRealtimeVoiceSession({
     setCurrentCaption('');
   }, []);
 
-  // Full-duplex speech synthesis with warm human female voice and live caption streaming
+  // LeetCode Agent is strictly silent text chat only - no speech synthesis
   const speak = useCallback(
-    (text: string) => {
-      if (typeof window === 'undefined') return;
-      if (isMuted) return;
-
-      const plainText = text
-        .replace(/`{1,3}[^`]*`{1,3}/g, 'קטע קוד')
-        .replace(/https?:\/\/\S+/g, '')
-        .replace(/[*_~#>[\]()]/g, '')
-        .replace(/[\u200E\u200F\u200B\u200C\uFEFF]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-      if (!plainText) return;
-
-      // Abort previous playback
-      hebrewAudio.stopSpeaking();
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-
-      // Speak using warm, natural female Hebrew voice
-      hebrewAudio.speak(plainText, {
-        onStart: () => {
-          setIsSpeaking(true);
-          setCurrentCaption(plainText);
-        },
-        onEnd: () => {
-          setIsSpeaking(false);
-          setTimeout(() => {
-            if (!isSpeakingRef.current) {
-              setCurrentCaption('');
-            }
-          }, 3000);
-        },
-        onSubtitle: (subText) => {
-          setCurrentCaption(subText);
-        }
-      });
+    (_text: string) => {
+      // Intentionally silent - Sarah Chen communicates exclusively via text chat
     },
-    [isMuted]
+    []
   );
 
   const toggleMute = useCallback(() => {

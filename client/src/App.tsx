@@ -49,7 +49,6 @@ export default function App() {
     interimTranscript,
     currentCaption,
     toggleListening,
-    speak,
     toggleMute,
     playAudioCue
   } = useRealtimeVoiceSession({
@@ -59,7 +58,7 @@ export default function App() {
     }
   });
 
-  // Intelligent Gemini-Powered Interviewer Agent Hook (for Coding Sandbox)
+  // Intelligent Gemini-Powered Interviewer Agent Hook (for Coding Sandbox - Strictly silent text chat)
   const {
     personaType,
     setPersonaType,
@@ -77,7 +76,7 @@ export default function App() {
     problem: currentProblem,
     language,
     candidateCode: code,
-    speak,
+    speak: () => {}, // LeetCode agent is strictly silent text chat, never speaks aloud
     playAudioCue,
     lastCodeEditTime,
     initialPersona: activePersona

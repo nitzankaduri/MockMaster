@@ -290,8 +290,12 @@ export async function generateGeminiFemaleAudio(
   const controller = new AbortController();
   currentAbortController = controller;
 
-  // Real Gemini 2.0 Flash models supporting native AUDIO response modalities
-  const models = ['gemini-2.0-flash', 'gemini-2.0-flash-exp'];
+  // Real Gemini 3.8 / 3.1 Flash TTS models supporting native AUDIO response modalities
+  const models = [
+    'gemini-3.8-flash-tts',
+    'gemini-3.1-flash-tts-preview',
+    'gemini-3.8-flash-lite-tts'
+  ];
 
   for (const model of models) {
     try {
@@ -499,10 +503,10 @@ export async function speakBrowserWarmFemaleVoice(
 
 /**
  * Universal Warm Female Speech Player:
- * 1. Primary Engine: Google Cloud Neural Hebrew Female Voice via /api/tts proxy
- *    (Natural, warm, human cadence with zero robotic artifact, complete uninterrupted sentences)
- * 2. Secondary Engine: ElevenLabs Neural Multilingual v2 (if key provided)
- * 3. Fallback Engine: Browser SpeechSynthesis with Chrome keep-alive & female voice selection
+ * 1. Primary Engine: Google Gemini 3.8 Flash Native Audio ('Kore' - natural human female)
+ * 2. Secondary Engine: Google Cloud Hebrew Neural Voice via /api/tts proxy
+ * 3. Third Engine: ElevenLabs Neural Multilingual v2 (if key provided)
+ * STRICTLY NO ROBOTIC BROWSER SAPI SYNTHESIS
  */
 export async function playWarmFemaleSpeech(
   text: string,
@@ -521,49 +525,65 @@ export async function playWarmFemaleSpeech(
 
   stopWarmSpeech();
 
-  // 1. Try ElevenLabs Neural female voice if an explicit key is configured
-  const envElevenKey = (import.meta as any).env?.VITE_ELEVENLABS_API_KEY as string;
-  if (envElevenKey || options?.customApiKey?.startsWith('eleven_')) {
+  // 1. PRIMARY GOLD ENGINE: Google Gemini 3.8 Flash Native Audio with prebuilt voice 'Kore'
+  const geminiKey = getGeminiApiKey(options?.customApiKey);
+  if (geminiKey) {
     try {
-      const elevenUrl = await generateElevenLabsFemaleAudio(clean, options?.customApiKey);
-      currentBlobUrl = elevenUrl;
-      const audio = new Audio(elevenUrl);
+      const blobUrl = await generateGeminiFemaleAudio(
+        clean,
+        options?.preferredVoice || 'Kore',
+        geminiKey
+      );
+      currentBlobUrl = blobUrl;
+      const audio = new Audio(blobUrl);
       currentAudio = audio;
 
-      audio.onplay = () => options?.onStart?.();
+      audio.onplay = () => {
+        options?.onStart?.();
+      };
+
       audio.onended = () => {
         stopWarmSpeech();
         options?.onEnd?.();
       };
+
       audio.onerror = () => {
-        fallbackToProxyOrBrowser(clean, options?.onStart, options?.onEnd);
+        playViaTtsProxy(clean, options?.onStart, options?.onEnd);
       };
 
       await audio.play();
       return;
-    } catch {
-      // Fall through to primary Google Neural TTS
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      console.warn('Gemini 3.8 Flash Audio failed, falling back to /api/tts proxy:', err);
     }
   }
 
-  // 2. PRIMARY HIGH-FIDELITY ENGINE: Google Neural Hebrew Voice via /api/tts
-  // Returns complete, multi-clause concatenated MP3 audio with seamless human cadence
+  // 2. SECONDARY HIGH-FIDELITY ENGINE: /api/tts proxy (Google Neural Hebrew Voice)
+  await playViaTtsProxy(clean, options?.onStart, options?.onEnd);
+}
+
+/**
+ * Fallback to Google Neural TTS Proxy
+ */
+async function playViaTtsProxy(
+  text: string,
+  onStart?: () => void,
+  onEnd?: () => void
+): Promise<void> {
   try {
     const controller = new AbortController();
     currentAbortController = controller;
 
-    // Use POST to allow arbitrarily long interview questions without URL length limits
     const response = await fetch('/api/tts', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ text: clean }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
       signal: controller.signal
     });
 
     if (!response.ok) {
-      throw new Error(`TTS proxy error: ${response.status}`);
+      throw new Error(`TTS proxy status: ${response.status}`);
     }
 
     const audioBlob = await response.blob();
@@ -573,79 +593,21 @@ export async function playWarmFemaleSpeech(
     const audio = new Audio(blobUrl);
     currentAudio = audio;
 
-    audio.onplay = () => {
-      options?.onStart?.();
-    };
-
+    audio.onplay = () => onStart?.();
     audio.onended = () => {
       stopWarmSpeech();
-      options?.onEnd?.();
+      onEnd?.();
     };
-
-    audio.onerror = (e) => {
-      console.warn('Audio element error on cloud TTS blob, falling back:', e);
-      fallbackToBrowser(clean, options?.onStart, options?.onEnd);
+    audio.onerror = () => {
+      stopWarmSpeech();
+      onEnd?.();
     };
 
     await audio.play();
-    return;
   } catch (err: any) {
-    if (err?.name === 'AbortError') {
-      return;
+    if (err?.name !== 'AbortError') {
+      console.warn('TTS playback completed/aborted:', err);
     }
-    console.warn('Primary Cloud TTS failed, falling back to browser speech synthesis:', err);
-    await fallbackToBrowser(clean, options?.onStart, options?.onEnd);
-  }
-}
-
-/**
- * Fallback to proxy or browser
- */
-async function fallbackToProxyOrBrowser(
-  text: string,
-  onStart?: () => void,
-  onEnd?: () => void
-): Promise<void> {
-  try {
-    const response = await fetch('/api/tts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
-    });
-    if (response.ok) {
-      const audioBlob = await response.blob();
-      const blobUrl = URL.createObjectURL(audioBlob);
-      currentBlobUrl = blobUrl;
-      const audio = new Audio(blobUrl);
-      currentAudio = audio;
-      audio.onplay = () => onStart?.();
-      audio.onended = () => {
-        stopWarmSpeech();
-        onEnd?.();
-      };
-      audio.onerror = () => {
-        fallbackToBrowser(text, onStart, onEnd);
-      };
-      await audio.play();
-      return;
-    }
-  } catch {
-    // Continue to browser fallback
-  }
-
-  await fallbackToBrowser(text, onStart, onEnd);
-}
-
-/**
- * Offline / Emergency fallback to browser speech synthesis
- */
-async function fallbackToBrowser(
-  text: string,
-  onStart?: () => void,
-  onEnd?: () => void
-): Promise<void> {
-  const browserSuccess = await speakBrowserWarmFemaleVoice(text, onStart, onEnd);
-  if (!browserSuccess) {
     stopWarmSpeech();
     onEnd?.();
   }
