@@ -200,10 +200,21 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
+let speechKeepAliveTimer: any = null;
+
+function clearKeepAlive() {
+  if (speechKeepAliveTimer) {
+    clearInterval(speechKeepAliveTimer);
+    speechKeepAliveTimer = null;
+  }
+}
+
 /**
  * Halts any active speech playback immediately (Barge-In)
  */
 export function stopWarmSpeech(): void {
+  clearKeepAlive();
+
   if (currentAbortController) {
     currentAbortController.abort();
     currentAbortController = null;
@@ -433,30 +444,43 @@ export async function speakBrowserWarmFemaleVoice(
   const voices = await preloadBrowserVoices();
   const femaleVoice = getBestWarmFemaleBrowserVoice(voices);
 
-  // If no female voice is available, return false to allow cloud fallback
-  if (!femaleVoice) {
-    return false;
-  }
-
   try {
     window.speechSynthesis.cancel();
+    clearKeepAlive();
+
     const utterance = new SpeechSynthesisUtterance(clean);
-    utterance.voice = femaleVoice;
-    utterance.lang = femaleVoice.lang || 'he-IL';
-    utterance.pitch = 1.0; // Warm natural female pitch (avoids cartoonish squeak)
-    utterance.rate = 0.95;  // Relaxed, natural, human conversational speed
+    if (femaleVoice) {
+      utterance.voice = femaleVoice;
+      utterance.lang = femaleVoice.lang || 'he-IL';
+    } else {
+      utterance.lang = 'he-IL';
+    }
+
+    utterance.pitch = 1.0;
+    utterance.rate = 0.95;
     utterance.volume = 1.0;
 
     utterance.onstart = () => {
       onStart?.();
+      // Keep-alive timer prevents Chrome from silently halting speech after ~10-15s
+      speechKeepAliveTimer = setInterval(() => {
+        if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis.speaking) {
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        } else {
+          clearKeepAlive();
+        }
+      }, 8000);
     };
 
     utterance.onend = () => {
+      clearKeepAlive();
       stopWarmSpeech();
       onEnd?.();
     };
 
     utterance.onerror = (e) => {
+      clearKeepAlive();
       if (e.error !== 'canceled') {
         console.warn('Browser speech synthesis error:', e);
       }
@@ -467,6 +491,7 @@ export async function speakBrowserWarmFemaleVoice(
     window.speechSynthesis.speak(utterance);
     return true;
   } catch (err) {
+    clearKeepAlive();
     console.warn('speakBrowserWarmFemaleVoice error:', err);
     return false;
   }
@@ -474,10 +499,10 @@ export async function speakBrowserWarmFemaleVoice(
 
 /**
  * Universal Warm Female Speech Player:
- * 1. Checks Gemini 2.0 Flash Audio ('Kore' - warm female)
- * 2. Checks ElevenLabs Neural female voices
- * 3. Uses Browser Natural Female Voice (Hila Natural / Google עברית / Carmit)
- * 4. Fallback to Google Cloud proxy with warm acoustic EQ
+ * 1. Primary Engine: Google Cloud Neural Hebrew Female Voice via /api/tts proxy
+ *    (Natural, warm, human cadence with zero robotic artifact, complete uninterrupted sentences)
+ * 2. Secondary Engine: ElevenLabs Neural Multilingual v2 (if key provided)
+ * 3. Fallback Engine: Browser SpeechSynthesis with Chrome keep-alive & female voice selection
  */
 export async function playWarmFemaleSpeech(
   text: string,
@@ -496,17 +521,13 @@ export async function playWarmFemaleSpeech(
 
   stopWarmSpeech();
 
-  // 1. Try Google Gemini 2.0 Flash Audio if API key configured
-  const geminiKey = getGeminiApiKey(options?.customApiKey);
-  if (geminiKey) {
+  // 1. Try ElevenLabs Neural female voice if an explicit key is configured
+  const envElevenKey = (import.meta as any).env?.VITE_ELEVENLABS_API_KEY as string;
+  if (envElevenKey || options?.customApiKey?.startsWith('eleven_')) {
     try {
-      const blobUrl = await generateGeminiFemaleAudio(
-        clean,
-        options?.preferredVoice || 'Kore',
-        geminiKey
-      );
-      currentBlobUrl = blobUrl;
-      const audio = new Audio(blobUrl);
+      const elevenUrl = await generateElevenLabsFemaleAudio(clean, options?.customApiKey);
+      currentBlobUrl = elevenUrl;
+      const audio = new Audio(elevenUrl);
       currentAudio = audio;
 
       audio.onplay = () => options?.onStart?.();
@@ -515,70 +536,116 @@ export async function playWarmFemaleSpeech(
         options?.onEnd?.();
       };
       audio.onerror = () => {
-        fallbackToBrowserOrProxy(clean, options?.onStart, options?.onEnd);
+        fallbackToProxyOrBrowser(clean, options?.onStart, options?.onEnd);
       };
 
       await audio.play();
       return;
     } catch {
-      // Fallback
+      // Fall through to primary Google Neural TTS
     }
   }
 
-  // 2. Try ElevenLabs Neural female voice if configured
+  // 2. PRIMARY HIGH-FIDELITY ENGINE: Google Neural Hebrew Voice via /api/tts
+  // Returns complete, multi-clause concatenated MP3 audio with seamless human cadence
   try {
-    const elevenUrl = await generateElevenLabsFemaleAudio(clean, options?.customApiKey);
-    currentBlobUrl = elevenUrl;
-    const audio = new Audio(elevenUrl);
+    const controller = new AbortController();
+    currentAbortController = controller;
+
+    // Use POST to allow arbitrarily long interview questions without URL length limits
+    const response = await fetch('/api/tts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ text: clean }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) {
+      throw new Error(`TTS proxy error: ${response.status}`);
+    }
+
+    const audioBlob = await response.blob();
+    const blobUrl = URL.createObjectURL(audioBlob);
+    currentBlobUrl = blobUrl;
+
+    const audio = new Audio(blobUrl);
     currentAudio = audio;
 
-    audio.onplay = () => options?.onStart?.();
+    audio.onplay = () => {
+      options?.onStart?.();
+    };
+
     audio.onended = () => {
       stopWarmSpeech();
       options?.onEnd?.();
     };
-    audio.onerror = () => {
-      fallbackToBrowserOrProxy(clean, options?.onStart, options?.onEnd);
+
+    audio.onerror = (e) => {
+      console.warn('Audio element error on cloud TTS blob, falling back:', e);
+      fallbackToBrowser(clean, options?.onStart, options?.onEnd);
     };
 
     await audio.play();
     return;
-  } catch {}
-
-  // 3. Fallback to Browser Natural Female Voice or Proxy
-  await fallbackToBrowserOrProxy(clean, options?.onStart, options?.onEnd);
+  } catch (err: any) {
+    if (err?.name === 'AbortError') {
+      return;
+    }
+    console.warn('Primary Cloud TTS failed, falling back to browser speech synthesis:', err);
+    await fallbackToBrowser(clean, options?.onStart, options?.onEnd);
+  }
 }
 
 /**
- * Fallback to browser neural female voice or cloud proxy
+ * Fallback to proxy or browser
  */
-async function fallbackToBrowserOrProxy(
+async function fallbackToProxyOrBrowser(
   text: string,
   onStart?: () => void,
   onEnd?: () => void
 ): Promise<void> {
-  // Try browser female voice first
-  const browserSuccess = await speakBrowserWarmFemaleVoice(text, onStart, onEnd);
-  if (browserSuccess) return;
-
-  // Otherwise, use local Vite proxy `/api/tts`
   try {
-    const url = `/api/tts?text=${encodeURIComponent(text.slice(0, 150))}`;
-    const audio = new Audio(url);
-    currentAudio = audio;
-
-    audio.onplay = () => onStart?.();
-    audio.onended = () => {
-      stopWarmSpeech();
-      onEnd?.();
-    };
-    audio.onerror = () => {
-      stopWarmSpeech();
-      onEnd?.();
-    };
-
-    await audio.play();
+    const response = await fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    if (response.ok) {
+      const audioBlob = await response.blob();
+      const blobUrl = URL.createObjectURL(audioBlob);
+      currentBlobUrl = blobUrl;
+      const audio = new Audio(blobUrl);
+      currentAudio = audio;
+      audio.onplay = () => onStart?.();
+      audio.onended = () => {
+        stopWarmSpeech();
+        onEnd?.();
+      };
+      audio.onerror = () => {
+        fallbackToBrowser(text, onStart, onEnd);
+      };
+      await audio.play();
+      return;
+    }
   } catch {
+    // Continue to browser fallback
+  }
+
+  await fallbackToBrowser(text, onStart, onEnd);
+}
+
+/**
+ * Offline / Emergency fallback to browser speech synthesis
+ */
+async function fallbackToBrowser(
+  text: string,
+  onStart?: () => void,
+  onEnd?: () => void
+): Promise<void> {
+  const browserSuccess = await speakBrowserWarmFemaleVoice(text, onStart, onEnd);
+  if (!browserSuccess) {
     stopWarmSpeech();
     onEnd?.();
   }

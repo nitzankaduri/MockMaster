@@ -5,9 +5,9 @@
  */
 
 import { hebrewAudio } from './hebrewAudioService';
-import { playWarmFemaleSpeech, testWarmFemaleVoice } from './warmFemaleVoiceService';
+import { playWarmFemaleSpeech, testWarmFemaleVoice, stopWarmSpeech } from './warmFemaleVoiceService';
 
-export { testWarmFemaleVoice };
+export { testWarmFemaleVoice, stopWarmSpeech };
 
 // Default Gemini API key from environment variable
 export const DEFAULT_GEMINI_API_KEY = ((import.meta as any).env?.VITE_GEMINI_API_KEY as string) || '';
@@ -151,6 +151,12 @@ export function stopSpeaking(): void {
     } catch {
       // Ignored
     }
+  }
+
+  try {
+    stopWarmSpeech();
+  } catch {
+    // Ignored
   }
 
   try {

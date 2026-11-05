@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import type { HebrewPersona } from '../types/hebrewInterview';
+import { playWarmFemaleSpeech, stopWarmSpeech } from '../services/warmFemaleVoiceService';
 
 // Web Speech API types
 interface IWindow extends Window {
@@ -13,7 +14,7 @@ interface UseHebrewVoiceSessionProps {
 }
 
 export function useHebrewVoiceSession({
-  persona,
+  persona: _persona,
   onSpeechInput
 }: UseHebrewVoiceSessionProps) {
   const [isListening, setIsListening] = useState(false);
@@ -129,11 +130,9 @@ export function useHebrewVoiceSession({
 
       // Barge-in: if candidate speaks while interviewer is speaking, cancel AI speech immediately
       if ((interim.trim() || finalTranscript.trim()) && isSpeakingRef.current) {
-        if (synthRef.current) {
-          synthRef.current.cancel();
-          setIsSpeaking(false);
-          setCurrentCaption('');
-        }
+        stopWarmSpeech();
+        setIsSpeaking(false);
+        setCurrentCaption('');
       }
 
       if (interim) {
@@ -214,69 +213,36 @@ export function useHebrewVoiceSession({
     }
   }, [isListening, startListening, stopListening]);
 
-  // Hebrew Text-To-Speech with voice selection
+  // Natural Hebrew Voice via /api/tts
   const speak = useCallback(
-    (text: string, onEnd?: () => void) => {
-      if (!synthRef.current || isMutedRef.current) {
+    async (text: string, onEnd?: () => void) => {
+      if (isMutedRef.current) {
         setCurrentCaption(text);
         if (onEnd) setTimeout(onEnd, 1500);
         return;
       }
 
-      synthRef.current.cancel();
+      stopWarmSpeech();
+      setCurrentCaption(text);
 
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = 'he-IL';
-
-      // Pick Hebrew voice if available
-      const voices = synthRef.current.getVoices();
-      const hebrewVoice = voices.find(
-        v =>
-          v.lang.toLowerCase().startsWith('he') ||
-          v.name.includes('Hebrew') ||
-          v.name.includes('עברית') ||
-          v.name.includes('Asaf') ||
-          v.name.includes('Hila')
-      );
-      if (hebrewVoice) {
-        utterance.voice = hebrewVoice;
-      }
-
-      // Persona voice dynamics
-      if (persona === 'challenging') {
-        utterance.rate = 1.05;
-        utterance.pitch = 0.95;
-      } else {
-        utterance.rate = 0.98;
-        utterance.pitch = 1.05;
-      }
-
-      utterance.onstart = () => {
-        setIsSpeaking(true);
-        setCurrentCaption(text);
-      };
-
-      utterance.onend = () => {
-        setIsSpeaking(false);
-        if (onEnd) onEnd();
-      };
-
-      utterance.onerror = (e) => {
-        console.warn('Speech synthesis error:', e);
-        setIsSpeaking(false);
-        if (onEnd) onEnd();
-      };
-
-      synthRef.current.speak(utterance);
+      await playWarmFemaleSpeech(text, {
+        onStart: () => {
+          setIsSpeaking(true);
+        },
+        onEnd: () => {
+          setIsSpeaking(false);
+          onEnd?.();
+        }
+      });
     },
-    [persona]
+    []
   );
 
   const toggleMute = useCallback(() => {
     setIsMuted(prev => {
       const next = !prev;
-      if (next && synthRef.current) {
-        synthRef.current.cancel();
+      if (next) {
+        stopWarmSpeech();
         setIsSpeaking(false);
       }
       return next;
@@ -284,11 +250,9 @@ export function useHebrewVoiceSession({
   }, []);
 
   const stopSpeaking = useCallback(() => {
-    if (synthRef.current) {
-      synthRef.current.cancel();
-      setIsSpeaking(false);
-      setCurrentCaption('');
-    }
+    stopWarmSpeech();
+    setIsSpeaking(false);
+    setCurrentCaption('');
   }, []);
 
   return {

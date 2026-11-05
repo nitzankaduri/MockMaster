@@ -128,8 +128,36 @@ export async function speakWithElevenLabs(
     return;
   }
 
-  // Halt any previous playback immediately
-  stopSpeaking();
+  // If no ElevenLabs key configured, use high-fidelity Google Neural Hebrew voice via /api/tts
+  if (!ELEVENLABS_API_KEY || !ELEVENLABS_API_KEY.trim()) {
+    try {
+      const response = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: sanitizedText })
+      });
+      if (response.ok) {
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        currentBlobUrl = blobUrl;
+        const audio = new Audio(blobUrl);
+        currentAudio = audio;
+        audio.onplay = () => onStart?.();
+        audio.onended = () => {
+          stopSpeaking();
+          onEnd?.();
+        };
+        audio.onerror = () => {
+          stopSpeaking();
+          onEnd?.();
+        };
+        await audio.play();
+        return;
+      }
+    } catch {
+      // Continue to ElevenLabs attempts
+    }
+  }
 
   const controller = new AbortController();
   currentAbortController = controller;

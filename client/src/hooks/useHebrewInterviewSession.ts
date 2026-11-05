@@ -153,16 +153,22 @@ export function useHebrewInterviewSession({
     }
   }, []);
 
-  // Speak with native Gemini Voice Audio or browser SpeechSynthesis fallback
+  // Speak with native Google Neural Hebrew Voice via /api/tts
   const speakText = useCallback(
     async (textToSpeak: string) => {
+      // Immediately silence mic while preparing and playing speech
+      setIsSpeaking(true);
+      isSpeakingRef.current = true;
+      try {
+        recognitionRef.current?.abort();
+      } catch {}
+
       try {
         await playInterviewerSpeech(
           textToSpeak,
           () => {
             setIsSpeaking(true);
             isSpeakingRef.current = true;
-            // Abort recognition while interviewer speaks so no speaker echo is captured
             try {
               recognitionRef.current?.abort();
             } catch {}
@@ -170,15 +176,23 @@ export function useHebrewInterviewSession({
           () => {
             setIsSpeaking(false);
             isSpeakingRef.current = false;
-            // Interviewer finished speaking -> candidate's turn to speak!
-            startListening();
+            // Short 350ms acoustic buffer so speaker tail doesn't loop back into mic
+            setTimeout(() => {
+              if (isSessionActiveRef.current && !isSpeakingRef.current) {
+                startListening();
+              }
+            }, 350);
           }
         );
       } catch (err) {
         console.warn('Interviewer audio playback notice:', err);
         setIsSpeaking(false);
         isSpeakingRef.current = false;
-        startListening();
+        setTimeout(() => {
+          if (isSessionActiveRef.current && !isSpeakingRef.current) {
+            startListening();
+          }
+        }, 300);
       }
     },
     [startListening]

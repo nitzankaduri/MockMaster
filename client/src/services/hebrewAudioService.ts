@@ -7,7 +7,6 @@
 
 export class HebrewAudioService {
   private audio: HTMLAudioElement | null = null;
-  private queue: string[] = [];
   private isPlayingQueue: boolean = false;
   private onStartCallback?: () => void;
   private onEndCallback?: () => void;
@@ -27,12 +26,18 @@ export class HebrewAudioService {
       };
 
       this.audio.onended = () => {
-        this.playNextChunk();
+        this.isPlayingQueue = false;
+        if (this.onEndCallback) {
+          this.onEndCallback();
+        }
       };
 
       this.audio.onerror = (e) => {
-        console.warn('HTMLAudio error on chunk, falling back or advancing:', e);
-        this.playNextChunk();
+        console.warn('HTMLAudio error, finalizing:', e);
+        this.isPlayingQueue = false;
+        if (this.onEndCallback) {
+          this.onEndCallback();
+        }
       };
     }
   }
@@ -137,55 +142,62 @@ export class HebrewAudioService {
       this.onSubtitleCallback(text);
     }
 
-    const chunks = this.chunkText(text);
-    if (chunks.length === 0) {
+    const clean = text.trim();
+    if (!clean) {
       if (this.onEndCallback) this.onEndCallback();
       return;
     }
 
-    this.queue = chunks;
     this.isPlayingQueue = true;
-    this.playNextChunk();
-  }
 
-  private playNextChunk(): void {
-    if (!this.isPlayingQueue) return;
+    // Use /api/tts POST for full, seamless concatenated MP3 audio
+    fetch('/api/tts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: clean })
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error(`TTS status ${res.status}`);
+        return res.blob();
+      })
+      .then((blob) => {
+        if (!this.isPlayingQueue) return;
+        const url = URL.createObjectURL(blob);
+        if (!this.audio) {
+          this.audio = new Audio();
+        }
 
-    if (this.queue.length === 0) {
-      this.isPlayingQueue = false;
-      if (this.onEndCallback) {
-        this.onEndCallback();
-      }
-      return;
-    }
+        this.audio.src = url;
+        this.audio.onplay = () => {
+          this.onStartCallback?.();
+        };
+        this.audio.onended = () => {
+          this.isPlayingQueue = false;
+          try {
+            URL.revokeObjectURL(url);
+          } catch {}
+          this.onEndCallback?.();
+        };
+        this.audio.onerror = () => {
+          this.isPlayingQueue = false;
+          try {
+            URL.revokeObjectURL(url);
+          } catch {}
+          this.fallbackSpeechSynthesis(clean, () => this.onEndCallback?.());
+        };
 
-    const nextChunk = this.queue.shift();
-    if (!nextChunk) {
-      this.isPlayingQueue = false;
-      if (this.onEndCallback) this.onEndCallback();
-      return;
-    }
-
-    // Use local proxy `/api/tts?text=...` to ensure Google female Hebrew TTS
-    const url = `/api/tts?text=${encodeURIComponent(nextChunk)}`;
-
-    if (!this.audio) {
-      this.audio = new Audio();
-    }
-
-    this.audio.src = url;
-    this.audio.load();
-
-    const playPromise = this.audio.play();
-    if (playPromise !== undefined) {
-      playPromise.catch((err) => {
-        console.warn('Cloud audio playback blocked or failed, attempting speech synthesis fallback:', err);
-        // Fallback to Web Speech API synthesis with warm female voice for this chunk
-        this.fallbackSpeechSynthesis(nextChunk, () => {
-          this.playNextChunk();
-        });
+        const playPromise = this.audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn('Audio play failed, falling back:', err);
+            this.fallbackSpeechSynthesis(clean, () => this.onEndCallback?.());
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn('TTS proxy request failed, falling back to speech synthesis:', err);
+        this.fallbackSpeechSynthesis(clean, () => this.onEndCallback?.());
       });
-    }
   }
 
   /**
@@ -279,7 +291,6 @@ export class HebrewAudioService {
    */
   public stopSpeaking(): void {
     this.isPlayingQueue = false;
-    this.queue = [];
 
     if (this.audio) {
       this.audio.pause();

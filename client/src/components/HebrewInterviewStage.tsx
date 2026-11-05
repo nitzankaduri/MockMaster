@@ -212,7 +212,7 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
 
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-mint-950/80 border border-mint-500/40 text-mint-300 text-xs font-mono font-medium mb-6 shadow-glow-mint">
               <Sparkles className="w-3.5 h-3.5 text-mint-400" />
-              <span>קול נשי חם, טבעי ואנושי • רותם (Google Gemini Kore & Neural AI)</span>
+              <span>קול נשי חם, טבעי ואנושי • רותם (Google Neural Voice)</span>
             </div>
 
             {/* Role Configuration Box */}
@@ -331,7 +331,7 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
 
           <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-[#111822] border border-white/5 text-mint-300 font-mono hidden md:inline flex items-center gap-1">
             <Volume2 className="w-3 h-3 text-mint-400" />
-            <span>קול נשי חם • Kore</span>
+            <span>קול נשי חם • רותם</span>
           </span>
         </div>
 
@@ -489,7 +489,7 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
                 </span>
               </h3>
               <p className="text-xs text-slate-400 mt-0.5 font-sans">
-                ראיון עבודה מקצועי לתפקיד {targetRole} • קול אנושי טבעי (Gemini Kore Voice)
+                ראיון עבודה מקצועי לתפקיד {targetRole} • קול אנושי טבעי (Google Neural AI)
               </p>
 
               {/* Dynamic Status Indicator */}
@@ -702,7 +702,7 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
       {/* Bottom Controls Bar */}
       <div className="h-16 border-t border-white/5 bg-[#080d12]/95 px-5 flex items-center justify-between z-20">
         <div className="text-xs text-slate-400 font-mono hidden sm:block">
-          Google Gemini 2.0 Flash Audio • Full Duplex
+          Google Neural Hebrew Voice • Full Duplex
         </div>
 
         {/* Meeting Controls */}
@@ -788,7 +788,7 @@ export const HebrewInterviewStage: React.FC<HebrewInterviewStageProps> = ({
           </div>
         ) : (
           <div className="hidden md:flex items-center text-xs text-slate-500 font-mono">
-            Gemini Native Engine v2.0
+            Google Neural Engine
           </div>
         )}
       </div>
